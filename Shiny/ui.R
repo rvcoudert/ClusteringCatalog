@@ -3,6 +3,25 @@ library(shiny)
 library(shinyWidgets)
 library(shinydashboard)
 
+#list of packages required
+list.of.packages <- c(
+  "magrittr",
+  "shiny",
+  "shinyWidgets",
+  "shinydashboard",
+  "ggplot2",
+  "dplyr",
+  "reshape2",
+  "cluster")
+
+#checking missing packages from list
+new.packages <- list.of.packages[
+  !(list.of.packages %in% installed.packages()[
+    ,"Package"])]
+
+#install missing ones
+if (length(new.packages)) install.packages(new.packages, dependencies = TRUE)
+
 # Changer le répertoire de travail sur celui du script en cours.
 # setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
