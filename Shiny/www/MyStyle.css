@@ -1,0 +1,35 @@
+/* __Style standard.__ */
+
+/* Tous les titres. */
+@import url('https://fonts.googleapis.com/css?family=Caveat+Brush&display=swap');
+h1, h2, h3, h4, h5, h6 {
+	font-family: "Caveat Brush", cursive;
+}
+
+/* Centrer uniquement le premier niveau de titre. */
+h1 {
+	text-align: center;
+}
+
+/* __Set Slider in the header.__ */
+/* Limiter la hauteur du header. */
+header {
+	max-height: 50px!important;
+    overflow: hidden;
+}
+
+
+/* __Double-sized Checkboxes in Sidebar.__ */
+.well input[type=checkbox] {
+	-ms-transform: scale(1.5); /* IE */
+	-moz-transform: scale(1.5); /* FF */
+	-webkit-transform: scale(1.5); /* Safari and Chrome */
+	-o-transform: scale(1.5); /* Opera */
+	transform: scale(1.5);
+	padding: 10px;
+}
+
+/* __Align label in ValueBox.__ */
+.small-box {
+	text-align: center;
+}
