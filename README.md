@@ -32,15 +32,15 @@ install missing ones
 
 *blobs
 
-![image of shiny blobs](https://raw.githubusercontent.com/rvcoudert/ClusteringCatalog/master/Screenshots/genData.blobs.jpg)
+![image of shiny blobs](https://raw.githubusercontent.com/rvcoudert/ClusteringCatalog/master/Screenshots/genData_blobs.jpg)
 
 *moons
 
-![image of shiny moons](https://raw.githubusercontent.com/rvcoudert/ClusteringCatalog/master/Screenshots/genData.moons.jpg)
+![image of shiny moons](https://raw.githubusercontent.com/rvcoudert/ClusteringCatalog/master/Screenshots/genData_moons.jpg)
 
 *circles
 
-![image of shiny circles](https://raw.githubusercontent.com/rvcoudert/ClusteringCatalog/master/Screenshots/genData.circles.jpg)
+![image of shiny circles](https://raw.githubusercontent.com/rvcoudert/ClusteringCatalog/master/Screenshots/genData_circles.jpg)
 
 ###kMeans overview
 
