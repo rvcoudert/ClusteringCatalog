@@ -7,7 +7,6 @@
   subdir = "Shiny")
   
 ## Require packages
-list of packages required
 >list.of.packages <- c(
   "magrittr",
   "shiny",
@@ -17,13 +16,9 @@ list of packages required
   "dplyr",
   "reshape2",
   "cluster")
-
-checking missing packages from list
 >new.packages <- list.of.packages[
   !(list.of.packages %in% installed.packages()[
     ,"Package"])]
-
-install missing ones
 >if (length(new.packages)) install.packages(new.packages, dependencies = TRUE)
 
 ## Screen shots
