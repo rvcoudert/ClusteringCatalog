@@ -82,10 +82,12 @@ page_kMeans <- function()
               uiOutput(outputId = "kMeans_silhouetteExplo"),
               uiOutput(outputId = "kMeans_variationExplo"),
               fluidPage(
+                p("Indicators VS nbCenters", style = "text-align: center;"),
                 plotOutput(
                   outputId = "kMeans_varHist_M",
                   height = "200px"
                 ),
+                p("Indicators VS seed", style = "text-align: center;"),
                 plotOutput(
                   outputId = "kMeans_seedHist_M",
                   height = "200px"

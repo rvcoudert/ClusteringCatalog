@@ -415,12 +415,6 @@ function(input, output) {
 
   # ----- __varHist_plot -----
   get_varHist_plot <- reactive({
-    clusters_data <- get_clusters_data()
-
-    if (is.null(clusters_data)) {
-      return(plot.new())
-    }
-
     indic_summary <- get_kMeans_summary()
 
     df_to_plot <- indic_summary %>%
@@ -485,12 +479,6 @@ function(input, output) {
 
   # ----- __seedHist_plot -----
   get_seedHist_plot <- reactive({
-    clusters_data <- get_clusters_data()
-
-    if (is.null(clusters_data)) {
-      return(plot.new())
-    }
-
     nbCenters <- input$kMeans_nbCenters
 
     if (is.null(nbCenters) | nbCenters == 1) {
@@ -647,7 +635,7 @@ function(input, output) {
 
     if (is.null(optimalNbCenters)) {
       # return("")
-      return(infoBox(title = myTitle, value = NULL))
+      return(infoBox(title = myTitle, value = NULL, color = "black"))
     } else {
       # return(optimalNbCenters)
       valueBox(
@@ -667,7 +655,7 @@ function(input, output) {
 
     if (is.null(optimalSeed)) {
       # return("")
-      return(infoBox(title = myTitle, value = NULL))
+      return(infoBox(title = myTitle, value = NULL, color = "black"))
     } else {
       # return(optimalSeed)
       valueBox(
