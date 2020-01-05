@@ -1,5 +1,7 @@
 # ClusteringCatalog
 
+Still in development, this Shiny Application presents several clustering methods through examples with data set in the plan.
+
 ## Run from R environment.
 > shiny::runGitHub(
   repo = "ClusteringCatalog",
