@@ -8,7 +8,7 @@ Still in development, this Shiny Application presents several clustering methods
   username = "rvcoudert",
   subdir = "Shiny")
   
-## Require packages
+## Required packages
 >list.of.packages <- c(
   "magrittr",
   "shiny",
