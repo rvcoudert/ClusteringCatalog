@@ -26,22 +26,22 @@ checking missing packages from list
 install missing ones
 >if (length(new.packages)) install.packages(new.packages, dependencies = TRUE)
 
-##Screen shots
+## Screen shots
 
-###3 data generation methods
+### 3 data generation methods
 
-*blobs
+* blobs
 
 ![image of shiny blobs](https://raw.githubusercontent.com/rvcoudert/ClusteringCatalog/master/Screenshots/genData_blobs.jpg)
 
-*moons
+* moons
 
 ![image of shiny moons](https://raw.githubusercontent.com/rvcoudert/ClusteringCatalog/master/Screenshots/genData_moons.jpg)
 
-*circles
+* circles
 
 ![image of shiny circles](https://raw.githubusercontent.com/rvcoudert/ClusteringCatalog/master/Screenshots/genData_circles.jpg)
 
-###kMeans overview
+### kMeans overview
 
 ![image of shiny circles](https://raw.githubusercontent.com/rvcoudert/ClusteringCatalog/master/Screenshots/kMeans.jpg)
