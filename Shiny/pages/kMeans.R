@@ -14,49 +14,30 @@ page_kMeans <- function()
           tabPanel(
             title = "Learn",
             p("Explanations about kMeans algorithm."),
+            p("Explanations about variation handled and silhouette score"),
             p("Display kMeans steps.")
           ),
           # ----- ____Auto Run -----
           tabPanel(
             title = "Auto Run",
-            tabsetPanel(
-              id = "kMeans_panel2",
-              tabPanel(
-                title = "Parameters",
-                h4("Selected parameters."),
-                fluidRow(
-                  uiOutput(
-                    outputId = "kMeans_optimalNbCenters"
-                  ),
-                  uiOutput(
-                    outputId = "kMeans_optimalSeed"
-                  )
-                ),
-                h4("How many clusters ?"),
-                p("In this kMeans version, the algorithm select",
-                  " the number of expected clusters",
-                  " by maximizing the silhouette score."),
-                p("For each NbCenters bewteen 1 end 8, two indicators",
-                  " are computed then averaged on the seeds from 1 to 20."),
-                plotOutput(
-                  outputId = "kMeans_varHist_A",
-                  height = "200px"
-                ),
-                h4("Which seed ?"),
-                p("Once the NbCenters is fixed,",
-                  " the algorithm select the seed from 1 to 20",
-                  " that maximize the silhouette score.")
+            h4("Selected parameters."),
+            fluidRow(
+              uiOutput(
+                outputId = "kMeans_optimalNbCenters"
               ),
-              tabPanel(
-                title = "Results",
-                h4("Indicators."),
-                uiOutput(
-                  outputId = "kMeans_silhouette"
-                ),
-                uiOutput(
-                  outputId = "kMeans_variation"
-                )
+              uiOutput(
+                outputId = "kMeans_optimalSeed"
               )
+            ),
+            h4("How many clusters ? Which seed ?"),
+            p("In this kMeans version, the algorithm maximize",
+              " the silhouette score by selecting the ideal configuration",
+              " with the number of expected clusters between 1 and 8",
+              " and the seed between 1 and 20."),
+            h4("Silhouette score VS nbCenters / kMeans_seed"),
+            plotOutput(
+              outputId = "kMeans_heatMap_sil_A",
+              height = "400px"
             )
           ),
           # ----- ____Manual Run -----
@@ -64,12 +45,12 @@ page_kMeans <- function()
             title = "Manual Run",
             tabPanel(
               title = "Explore",
+              h4("Manual exploring"),
               sliderTextInput(
                 inputId = "kMeans_nbCenters",
                 label = "Expected clusters",
                 choices = 1:8,
                 selected = 3,
-                animate = TRUE,
                 grid = TRUE
               ),
               sliderTextInput(
@@ -77,28 +58,22 @@ page_kMeans <- function()
                 label = "kMeans seed",
                 choices = 1:20,
                 selected = 1,
+                animate = TRUE,
                 grid = TRUE
-              ),
-              uiOutput(outputId = "kMeans_silhouetteExplo"),
-              uiOutput(outputId = "kMeans_variationExplo"),
-              fluidPage(
-                p("Indicators VS nbCenters", style = "text-align: center;"),
-                plotOutput(
-                  outputId = "kMeans_varHist_M",
-                  height = "200px"
-                ),
-                p("Indicators VS seed", style = "text-align: center;"),
-                plotOutput(
-                  outputId = "kMeans_seedHist_M",
-                  height = "200px"
-                )
               ),
               sliderTextInput(
                 inputId = "kMeans_myIterMax",
                 label = "Maximum of iterations",
-                choices = 5:50,
+                choices = 1:20,
                 selected = 10,
                 grid = TRUE
+              ),
+              fluidPage(
+                h4("Silhouette score VS nbCenters / kMeans_seed"),
+                plotOutput(
+                  outputId = "kMeans_heatMap_sil_M",
+                  height = "400px"
+                )
               )
             )
           )
@@ -106,29 +81,62 @@ page_kMeans <- function()
       ),
       # ----- __main -----
       mainPanel = mainPanel(
-        h3(
-          textOutput(
-            outputId = "kMeans_info"
+        fluidRow(
+          column(
+            width = 4,
+            h3(textOutput(outputId = "kMeans_info"))
+          ),
+          column(
+            width = 4,
+            uiOutput(outputId = "kMeans_silhouette")
+          ),
+          column(
+            width = 4,
+            uiOutput(outputId = "kMeans_variation")
           )
         ),
-        plotOutput(
-          height = "600px",
-          outputId = "kMeans_plot"
+        fluidRow(
+          column(
+            width = 6,
+            plotOutput(
+              height = "500px",
+              outputId = "kMeans_plot",
+              brush = brushOpts(id = "kMeans_brush", resetOnNew = FALSE)
+            )
+          ),
+          column(
+            width = 6,
+            plotOutput(
+              height = "500px",
+              outputId = "kMeans_zoom"
+            )
+          )
         ),
         fluidRow(
-          div(
-            style = "display: inline-block;",
+          column(
+            width = 4,
+            class = "myCheckbox square",
             checkboxInput(
               inputId = "kMeans_init",
-              label = "Initial clusters",
+              label = "Initial Data",
               value = FALSE
             )
           ),
-          div(
-            style = "display: inline-block;",
+          column(
+            width = 4,
+            class = "myCheckbox square",
             checkboxInput(
-              inputId = "kMeans_displayCenters",
-              label = "Display Centers",
+              inputId = "kMeans_initCenters",
+              label = "Initial Centers",
+              value = TRUE
+            )
+          ),
+          column(
+            width = 4,
+            class = "myCheckbox square",
+            checkboxInput(
+              inputId = "kMeans_finalCenters",
+              label = "Final Centers",
               value = TRUE
             )
           )

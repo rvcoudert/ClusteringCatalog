@@ -172,7 +172,7 @@ make_circles <- function(
 }
 
 
-plot_clusters <- function(clusters_points) {
+plot_clusters <- function(clusters_points, xlim = NULL, ylim = NULL) {
   p <- ggplot2::ggplot(
     data = clusters_points
   ) + ggplot2::geom_point(
@@ -182,13 +182,15 @@ plot_clusters <- function(clusters_points) {
       colour = as.factor(cluster)
     ),
     size = 3
-  ) + ggplot2::coord_fixed(
   ) + ggplot2::scale_color_brewer(
-    palette = "Dark2"
+    palette = "Dark2",
+    guide = FALSE,
+    na.value = "black"
   ) + ggplot2::theme_bw(
     base_size = 16
   ) + ggplot2::theme(
     legend.position = "none",
+    plot.title = ggplot2::element_text(hjust = 0.5),
     panel.grid = ggplot2::element_blank(),
     panel.border = ggplot2::element_blank(),
     axis.title = ggplot2::element_blank(),
@@ -196,26 +198,36 @@ plot_clusters <- function(clusters_points) {
     axis.ticks = ggplot2::element_blank()
   )
 
+  if (is.null(xlim) | is.null(ylim)) {
+    p <- p + ggplot2::coord_fixed(
+    ) + ggplot2::labs(
+      title = "General View"
+    )
+  } else {
+    p <- p + ggplot2::coord_cartesian(
+      xlim = xlim,
+      ylim = ylim,
+      expand = FALSE
+    ) + ggplot2::labs(
+      title = "Zoom"
+    )
+  }
+
   return(p)
+}
+
+
+circleFun <- function(center = c(0,0), r = 1, npoints = 20) {
+  tt <- seq(0,2*pi,length.out = npoints)
+  xx <- center[1] + r * cos(tt)
+  yy <- center[2] + r * sin(tt)
+  return(data.frame(x = xx, y = yy))
 }
 
 
 function(input, output) {
 
-  # ----- reac_expr -----
-
-  # Ici, on centralise les appels à certains <input>
-  # utilisés à plusieurs endroits.
-
-  # ----- __seed -----
-
-  get_seed <- reactive({
-    seed <- input$seed
-    if (!is.numeric(seed)) {
-      seed <- 0
-    }
-    return(as.numeric(seed))
-  })
+  # ----- genData_reac -----
 
   # ----- __clusters_data -----
 
@@ -223,68 +235,136 @@ function(input, output) {
     nSamples <- input$genData_nSamples
     clusterSd <- input$genData_clusterSd
 
-    if (is.null(nSamples) | is.null(clusterSd) |
-        is.na(nSamples) | is.na(clusterSd)) {
-      return(NULL)
+    if (
+      is.null(input$genData_method) |
+      is.null(input$genData_nSamples) |
+      is.null(input$genData_clusterSd) |
+      is.null(input$genData_blobsNbClusters) |
+      is.null(input$genData_blobsMinDist) |
+      is.null(input$seed)
+    ) {
+      clusters_data <- NULL
+    } else {
+      if (input$genData_method == "blobs") {
+        nb_clusters <- input$genData_blobsNbClusters
+        if (input$genData_blobsMinDist == TRUE) {
+          myMinDist <- clusterSd * 5
+        } else {
+          myMinDist <- 0
+        }
+        clusters_data <- make_blobs(
+          n_samples = nSamples,
+          centers = nb_clusters,
+          cluster_sd = clusterSd,
+          min_dist = myMinDist,
+          seed = input$seed)
+      }
+
+      if (input$genData_method == "moons") {
+        clusters_data <- make_moons(
+          n_samples = nSamples,
+          cluster_sd = clusterSd,
+          seed = input$seed)
+      }
+
+      if (input$genData_method == "circles")
+      {
+        scale <- input$genData_circlesScale
+        clusters_data <- make_circles(
+          n_samples = nSamples,
+          cluster_sd = clusterSd,
+          scale = scale,
+          seed = input$seed)
+      }
     }
 
-    if (input$genData_method == "blobs") {
-      nb_clusters <- input$genData_blobsNbClusters
-      if (is.null(nb_clusters)) {
-        return(NULL)
-      }
-      if (input$genData_blobsMinDist == TRUE) {
-        myMinDist <- clusterSd * 5
-      } else {
-        myMinDist <- 0
-      }
+
+    # Si aucun input, alors on initialise.
+    if (is.null(clusters_data)) {
       clusters_data <- make_blobs(
-        n_samples = nSamples,
-        centers = nb_clusters,
-        cluster_sd = clusterSd,
-        min_dist = myMinDist,
-        seed = get_seed())
-    }
-
-    if (input$genData_method == "moons") {
-      clusters_data <- make_moons(
-        n_samples = nSamples,
-        cluster_sd = clusterSd,
-        seed = get_seed())
-    }
-
-    if (input$genData_method == "circles")
-    {
-      scale <- input$genData_circlesScale
-      if (is.null(scale)) {
-        return(NULL)
-      }
-      clusters_data <- make_circles(
-        n_samples = nSamples,
-        cluster_sd = clusterSd,
-        scale = scale,
-        seed = get_seed())
+        n_samples = 500,
+        centers = 3,
+        cluster_sd = 1,
+        min_dist = 2,
+        seed = 1)
     }
 
     return(clusters_data)
   })
+  # ----- sideBar_output -----
 
-  # ----- genData -----
+  output$blobsNbClusters <- renderUI({
+    UI <- NULL
+
+    if (input$genData_method == "blobs") {
+      UI <- sliderTextInput(
+        inputId = "genData_blobsNbClusters",
+        label = "Blobs number",
+        choices = 1:8,
+        selected = 3,
+        animate = TRUE,
+        grid = TRUE
+      )
+    }
+
+    return(UI)
+  })
+
+  output$blobsMinDist <- renderUI({
+    UI <- NULL
+
+    if (input$genData_method == "blobs") {
+      UI <- checkboxInput(
+        inputId = "genData_blobsMinDist",
+        label = "Blobs Min Dist",
+        value = TRUE
+      )
+    }
+
+    return(UI)
+  })
+
+  output$circlesScale <- renderUI({
+    UI <- NULL
+
+    if (input$genData_method == "circles") {
+      UI <- sliderTextInput(
+        inputId = "genData_circlesScale",
+        label = "Scale Factor",
+        choices = 0:10 / 10,
+        selected = 0.6,
+        animate = TRUE,
+        grid = TRUE
+      )
+    }
+
+    return(UI)
+  })
+
+
+  # ----- genData_reac -----
 
   # ----- __clusters_info -----
 
   get_clusters_info <- reactive({
-    nbClusters <- input$genData_blobsNbClusters
     method <- input$genData_method
 
+    if (input$genData_method %in% c("moons", "circles")) {
+      nbClusters <- 2
+    }
+
+    if (input$genData_method == "blobs") {
+      nbClusters <- input$genData_blobsNbClusters
+    }
+
     if (is.null(nbClusters)) {
-      return("")
+      return("3 clusters (blobs)")
     }
 
     if (nbClusters == 1) {
       cluster_string <- "1 cluster"
     } else {
-      cluster_string <- paste(input$genData_blobsNbClusters, "clusters")
+      cluster_string <- paste(nbClusters, "clusters")
     }
 
     return(paste(
@@ -298,19 +378,168 @@ function(input, output) {
 
   # ----- __clusters_plot -----
 
-  get_clusters_plot <- reactive({
+  get_clusters_plot <- function(...) {
     clusters_data <- get_clusters_data()
     if (is.null(clusters_data)) {
       return(plot.new())
     }
 
-    p <- plot_clusters(
-      clusters_points = clusters_data)
+    p <- plot_clusters(clusters_points = clusters_data, ...)
+
+    return(p)
+  }
+  # ----- genData_output -----
+
+  # ----- __info -----
+  output$genData_info <- renderText({
+    get_clusters_info()
+  })
+
+  # ----- __plot -----
+  output$genData_plot <- renderPlot({
+    get_clusters_plot()
+  })
+
+  ranges_genData <- reactiveValues(x = NULL, y = NULL)
+
+  observe({
+    brush <- input$genData_brush
+    if (!is.null(brush)) {
+      ranges_genData$x <- c(brush$xmin, brush$xmax)
+      ranges_genData$y <- c(brush$ymin, brush$ymax)
+    } else {
+      ranges_genData$x <- NULL
+      ranges_genData$y <- NULL
+    }
+  })
+
+  # ----- __plot_2 -----
+  output$genData_plot_2 <- renderPlot({
+    if (is.null(ranges_genData$x) | is.null(ranges_genData$y)) {
+      message <- "Waiting for zoom."
+      p <- ggplot2::ggplot(
+      ) + ggplot2::annotate(
+        "text", x = 0, y = 0, size = 8, label = message
+        ) + ggplot2::theme_void()
+    } else {
+    p <- get_clusters_plot(xlim = ranges_genData$x, ylim = ranges_genData$y)
+
+    }
 
     return(p)
   })
 
-  # ----- kMeans -----
+
+  # ----- kMeans_reac -----
+
+  # ----- __run_KMeans -----
+
+  run_kMeans <- reactive({
+    clusters_data <- get_clusters_data()
+
+    if (is.null(clusters_data)) {
+      return(NULL)
+    }
+
+    if (input$kMeans_panel1 == "Manual Run") {
+      nbCenters <- input$kMeans_nbCenters
+      kMeans_seed <- input$kMeans_seed
+      myIterMax <- input$kMeans_myIterMax
+    } else {
+      nbCenters <- get_kMeans_optimalNbCenters()
+      kMeans_seed <- get_kMeans_optimalSeed()
+      myIterMax <- 10
+    }
+
+    if (is.null(nbCenters) | is.null(kMeans_seed)) {
+      return(plot.new())
+    }
+
+    clusters_space <- clusters_data %>%
+      dplyr::select(x, y)
+    set.seed(kMeans_seed)
+    init_centers <- clusters_space %>%
+      dplyr::slice(sample(nrow(.), size = nbCenters))
+    init_centers_space <- data.frame(
+      init_centers,
+      cluster = 1:nbCenters
+    )
+    kmeans_result <- kmeans(
+      x = clusters_space,
+      centers = init_centers,
+      iter.max = myIterMax
+    )
+    final_centers_space <- data.frame(
+      kmeans_result$centers,
+      cluster = 1:nbCenters
+    )
+
+    kmeans_space <- data.frame(
+      cluster = kmeans_result$cluster,
+      x = clusters_data$x,
+      y = clusters_data$y
+    ) %>% dplyr::arrange(cluster)
+
+    attr(kmeans_space, "init_centers_space") <- init_centers_space
+    attr(kmeans_space, "final_centers_space") <- final_centers_space
+
+    return(kmeans_space)
+  })
+
+  # ----- __plot_kMeans -----
+
+  plot_kMeans <- reactive({
+    kmeans_space <- run_kMeans()
+
+    if (is.null(kmeans_space)) return(plot.new())
+
+    init_centers_space <- attr(kmeans_space, "init_centers_space")
+    final_centers_space <- attr(kmeans_space, "final_centers_space")
+
+    p <- kmeans_space %>% plot_clusters()
+
+    if (input$kMeans_initCenters) {
+      p <- p + ggplot2::geom_point(
+        data = init_centers_space,
+        mapping = ggplot2::aes(x = x, y = y, fill = as.factor(cluster)),
+        size = 3,
+        shape = 22
+      )
+    }
+
+    if (input$kMeans_finalCenters) {
+      p <- p + ggplot2::geom_point(
+        data = final_centers_space,
+        mapping = ggplot2::aes(x = x, y = y, fill = as.factor(cluster)),
+        size = 3,
+        shape = 21
+      )
+    }
+
+    if (input$kMeans_finalCenters | input$kMeans_initCenters) {
+      p <- p + ggplot2::scale_fill_brewer(
+        palette = "Dark2"
+      )
+    }
+
+    if (input$kMeans_finalCenters & input$kMeans_initCenters) {
+      p <- p + ggplot2::geom_segment(
+        data = data.frame(
+          init_centers_space,
+          final_centers_space %>%
+            dplyr::mutate(xend = x, yend = y) %>%
+            dplyr::select(-cluster)
+        ),
+        mapping = ggplot2::aes(
+          x = x, y = y,
+          xend = xend, yend = yend
+        ),
+        arrow = ggplot2::arrow(length = ggplot2::unit(0.02, "npc"))
+      )
+    }
+
+    return(p)
+  })
 
   # ----- __indic -----
 
@@ -361,32 +590,17 @@ function(input, output) {
     })
   })
 
-  # ----- __summary -----
-
-  get_kMeans_summary <- reactive({
+  # ----- __optimalNbCenters -----
+  get_kMeans_optimalNbCenters <- reactive({
     indic_df <- get_kMeans_indic()
 
     if (is.null(indic_df)) {
       return(NULL)
     }
-    indic_summary <- indic_df %>%
-      dplyr::group_by(nbCenters.col) %>%
-      dplyr::summarise(
-        silhouette_score.col = mean(silhouette_score.col),
-        handled_variation.col = mean(handled_variation.col))
-  })
 
-  # ----- __optimalNbCenters -----
-  get_kMeans_optimalNbCenters <- reactive({
-    indic_summary <- get_kMeans_summary()
-
-    if (is.null(indic_summary)) {
-      return(NULL)
-    }
-
-    # On choisit le nombre étudié de clusters attendus,
-    #   puis sélectionne la meilleure graine suivant le score de silhouette.
-    indic_summary %>%
+    # On sélectionne simplement le nombre de clusters issu
+    #   la configuration avec le meilleur score de silhouette.
+    indic_df %>%
       dplyr::filter(silhouette_score.col == max(silhouette_score.col)) %>%
       dplyr::select(nbCenters.col) %>%
       head(1) %>% unlist() %>% unname()
@@ -395,233 +609,89 @@ function(input, output) {
 
   # ----- __optimalSeed -----
   get_kMeans_optimalSeed <- reactive({
-    nbCenters <-  get_kMeans_optimalNbCenters()
+    indic_df <- get_kMeans_indic()
 
-    if (is.null(nbCenters)) {
+    if (is.null(indic_df)) {
       return(NULL)
     }
 
-    indic_df <- get_kMeans_indic()
-
-    # On choisit le nombre étudié de clusters attendus,
-    #   puis on sélectionne la meilleure graine suivant le score de silhouette.
+    # On sélectionne simplement la graine issue
+    #   la configuration avec le meilleur score de silhouette.
     indic_df %>%
-      dplyr::filter(nbCenters.col == nbCenters) %>%
       dplyr::filter(silhouette_score.col == max(silhouette_score.col)) %>%
       dplyr::select(kMeans_seed.col) %>%
       head(1) %>% unlist() %>% unname()
   })
 
 
-  # ----- __varHist_plot -----
-  get_varHist_plot <- reactive({
-    indic_summary <- get_kMeans_summary()
+  circleFun <- function(center = c(0,0), r = 1, npoints = 20) {
+    tt <- seq(0,2 * pi, length.out = npoints)
+    xx <- center[1] + r * cos(tt)
+    yy <- center[2] + r * sin(tt)
+    return(data.frame(x = xx, y = yy))
+  }
 
-    df_to_plot <- indic_summary %>%
-      reshape2::melt(id.vars = "nbCenters.col")
 
-    myMax <- df_to_plot %>%
-      dplyr::filter(variable == "silhouette_score.col") %>%
-      dplyr::filter(value == max(value)) %>%
-      head(1)
-    x_myMax <- myMax[["nbCenters.col"]]
-    y_myMax <- myMax[["value"]]
-    myMax_to_plot <- data.frame(
-      x = c(x_myMax, 1),
-      xend = c(x_myMax, x_myMax),
-      y = c(0, y_myMax),
-      yend = c(y_myMax, y_myMax)
-    )
+  # ----- __heatMap_sil -----
+  get_kMeans_heatMap_sil <- reactive({
+    indic_df <- get_kMeans_indic()
+
+    if (is.null(indic_df)) {
+      return(plot.new())
+    }
+
+    # On supprime les lignes où il n'y a qu'un centre. (Inintéressant.)
+    indic_df <- indic_df %>% dplyr::filter(nbCenters.col != 1)
+
+    myColours <- c(
+      "darkred", "red3", "red",
+      "orangered", "gold2",
+      "forestgreen", "darkgreen")
+    names(myColours) <-
+      c(0, 0.1, 0.2,
+        0.4, 0.5,
+        0.8, 1)
+
+    # myColours <- c("red3", "gold2", "darkgreen")
+    # names(myColours) <- c(0, 0.5, 1)
 
     p <- ggplot2::ggplot(
-      data = df_to_plot
-    ) + ggplot2::geom_line(
+      data = indic_df,
       mapping = ggplot2::aes(
         x = nbCenters.col,
-        y = value,
-        color = variable
-      ),
-      size = 2
-    ) + ggplot2::geom_segment(
-      data = myMax_to_plot,
-      mapping = ggplot2::aes(
-        x = x,
-        y = y,
-        xend = xend,
-        yend = yend),
-      linetype = "dashed",
-      color = "orangered"
+        y = kMeans_seed.col,
+        fill = silhouette_score.col
+      )
+    ) + ggplot2::geom_tile(
+    ) + ggplot2::scale_fill_gradientn(
+      colours = myColours,
+      values = names(myColours)
+      # limits = c(0,1),
+      # breaks = c(0, 0.5, 0.8, 0.9, 1)
+    ) + ggplot2::scale_x_discrete(
+      breaks = 2:8,
+      limits = 2:8,
+      expand = c(0,0)
+    ) + ggplot2::scale_y_discrete(
+      breaks = 1:20,
+      limits = 1:20,
+      expand = c(0,0)
     ) + ggplot2::labs(
-      x = "Expected clusters",
-      y = ""
-    ) + ggplot2::scale_x_continuous(
-      breaks = 1:8,
-      limits = c(1,8),
-      expand = c(0,0)
-    ) + ggplot2::scale_y_continuous(
-      limits = c(0,1),
-      expand = c(0,0)
-    ) + ggplot2::scale_colour_manual(
-      name = "Indicator",
-      limits = c("silhouette_score.col", "handled_variation.col"),
-      values = c("orangered", "darkgreen"),
-      labels = c("Silhouette Score", "Handled Variation"),
-      na.value = "gray75"
-    ) + ggplot2::theme_bw(
+      x = "nbCenters",
+      y = "kMeans_seed",
+      fill = "silhouette_score"
     ) + ggplot2::theme(
-      axis.title.y = ggplot2::element_blank(),
-      legend.position = "bottom"
+      legend.position = "bottom",
+      legend.key.size = ggplot2::unit(1, "cm"),
+      legend.title = ggplot2::element_text(vjust = 0.9),
+      legend.text = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5),
     )
 
     return(p)
   })
 
 
-  # ----- __seedHist_plot -----
-  get_seedHist_plot <- reactive({
-    nbCenters <- input$kMeans_nbCenters
-
-    if (is.null(nbCenters) | nbCenters == 1) {
-      return(plot.new())
-    } else {
-      indic_df <- get_kMeans_indic()
-
-      df_to_plot <- indic_df %>%
-        dplyr::filter(nbCenters.col == nbCenters) %>%
-        dplyr::select(-nbCenters.col) %>%
-        reshape2::melt(id.vars = "kMeans_seed.col")
-
-      myMax <- df_to_plot %>%
-        dplyr::filter(variable == "silhouette_score.col") %>%
-        dplyr::filter(value == max(value)) %>%
-        head(1)
-      x_myMax <- myMax[["kMeans_seed.col"]]
-      y_myMax <- myMax[["value"]]
-      if (x_myMax == 1) {
-        myMax_to_plot <- data.frame(
-          x = c(x_myMax, 20),
-          xend = c(x_myMax, x_myMax),
-          y = c(0, y_myMax),
-          yend = c(y_myMax, y_myMax)
-        )
-      } else {
-        myMax_to_plot <- data.frame(
-          x = c(x_myMax, 1),
-          xend = c(x_myMax, x_myMax),
-          y = c(0, y_myMax),
-          yend = c(y_myMax, y_myMax)
-        )
-      }
-
-      p <- ggplot2::ggplot(
-        data = df_to_plot
-      ) + ggplot2::geom_line(
-        mapping = ggplot2::aes(
-          x = kMeans_seed.col,
-          y = value,
-          color = variable
-        ),
-        size = 2
-      ) + ggplot2::geom_segment(
-        data = myMax_to_plot,
-        mapping = ggplot2::aes(
-          x = x,
-          y = y,
-          xend = xend,
-          yend = yend),
-        linetype = "dashed",
-        color = "orangered"
-      ) + ggplot2::labs(
-        x = "Seed",
-        y = ""
-      ) + ggplot2::scale_x_continuous(
-        breaks = 1:20,
-        limits = c(1,20),
-        expand = c(0,0)
-      ) + ggplot2::scale_y_continuous(
-        limits = c(0,1),
-        expand = c(0,0)
-      ) + ggplot2::scale_colour_manual(
-        name = "Indicator",
-        limits = c("silhouette_score.col", "handled_variation.col"),
-        values = c("orangered", "darkgreen"),
-        labels = c("Silhouette Score", "Handled Variation"),
-        na.value = "gray75"
-      ) + ggplot2::theme_bw(
-      ) + ggplot2::theme(
-        axis.title.y = ggplot2::element_blank(),
-        legend.position = "bottom"
-      )
-
-      return(p)
-    }
-  })
-
-
-
-  # ----- sideBar -----
-
-  output$blobsNbClusters <- renderUI({
-    UI <- NULL
-
-    if (input$genData_method == "blobs") {
-      UI <- sliderTextInput(
-        inputId = "genData_blobsNbClusters",
-        label = "Blobs number",
-        choices = 1:8,
-        selected = 3,
-        animate = TRUE,
-        grid = TRUE
-      )
-    }
-
-    return(UI)
-  })
-
-  output$blobsMinDist <- renderUI({
-    UI <- NULL
-
-    if (input$genData_method == "blobs") {
-      UI <- checkboxInput(
-        inputId = "genData_blobsMinDist",
-        label = "Blobs Min Dist"
-      )
-    }
-
-    return(UI)
-  })
-
-  output$circlesScale <- renderUI({
-    UI <- NULL
-
-    if (input$genData_method == "circles") {
-      UI <- sliderTextInput(
-        inputId = "genData_circlesScale",
-        label = "Scale Factor",
-        choices = 0:10 / 10,
-        selected = 0.6,
-        animate = TRUE,
-        grid = TRUE
-      )
-    }
-
-    return(UI)
-  })
-
-  # ----- genData -----
-
-  # ----- __info -----
-  output$genData_info <- renderText({
-    get_clusters_info()
-  })
-
-  # ----- __plot -----
-  output$genData_plot <- renderPlot({
-    get_clusters_plot()
-  })
-
-
-  # ----- kMeans -----
+  # ----- kMeans_output -----
 
   # ----- __info -----
   output$kMeans_info <- renderText({
@@ -633,19 +703,12 @@ function(input, output) {
     optimalNbCenters <- get_kMeans_optimalNbCenters()
     myTitle <- "Optimal NbCenters"
 
-    if (is.null(optimalNbCenters)) {
-      # return("")
-      return(infoBox(title = myTitle, value = NULL, color = "black"))
-    } else {
-      # return(optimalNbCenters)
-      valueBox(
-        subtitle = myTitle,
-        value = optimalNbCenters,
-        # icon = icon("sort-numeric-up"),
-        color = "black",
-        width = 6
-      )
-    }
+    valueBox(
+      subtitle = myTitle,
+      value = optimalNbCenters,
+      color = "black",
+      width = 6
+    )
   })
 
   # ----- __optimalSeed -----
@@ -653,38 +716,42 @@ function(input, output) {
     optimalSeed <- get_kMeans_optimalSeed()
     myTitle <- "Optimal Seed"
 
-    if (is.null(optimalSeed)) {
-      # return("")
-      return(infoBox(title = myTitle, value = NULL, color = "black"))
-    } else {
-      # return(optimalSeed)
-      valueBox(
-        subtitle = myTitle,
-        value = optimalSeed,
-        # icon = icon("sort-numeric-up"),
-        color = "black",
-        width = 6
-      )
-    }
+    valueBox(
+      subtitle = myTitle,
+      value = optimalSeed,
+      color = "black",
+      width = 6
+    )
   })
 
 
   # ----- __silhouette -----
   output$kMeans_silhouette <- renderUI({
-    myTitle <- "Silhouette Score"
-    clusters_data <- get_clusters_data()
+    myTitle <- HTML(paste("Silhouette", br(), "Score", sep = ""))
 
-    if (is.null(clusters_data)) {
-      return(infoBox(title = myTitle, value = NULL))
+    # On récupère les valeurs en fonction du mode utilisé.
+    if (input$kMeans_panel1 == "Auto Run")
+    {
+      ## Auto Run.
+      nbCenters <- get_kMeans_optimalNbCenters()
+      kMeans_seed <- get_kMeans_optimalSeed()
+      myIterMax <- 10
+    } else {
+      ## Manual Run.
+      nbCenters <- input$kMeans_nbCenters
+      kMeans_seed <- input$kMeans_seed
+      myIterMax <- input$kMeans_myIterMax
     }
+    indic_df <- get_kMeans_indic()
 
-    nbCenters <- get_kMeans_optimalNbCenters()
-    kMeans_seed <- get_kMeans_optimalSeed()
-
-    if (is.null(nbCenters) | nbCenters == 1 | is.null(kMeans_seed)) {
+    # On gère les cas où les valeurs ne sont pas encore prêtes.
+    if (is.null(nbCenters) | is.null(kMeans_seed) |
+        is.null(myIterMax) | is.null(indic_df)) {
+      silhouette_score <- NULL
+    } else if (nbCenters == 1) {
       silhouette_score <- 0 %>% paste("%")
     } else {
-      silhouette_score <- get_kMeans_indic() %>%
+      silhouette_score <- indic_df %>%
         dplyr::filter(nbCenters.col == nbCenters) %>%
         dplyr::filter(kMeans_seed.col == kMeans_seed) %>%
         dplyr::select(silhouette_score.col) %>%
@@ -696,28 +763,39 @@ function(input, output) {
       title = myTitle,
       value = silhouette_score,
       icon = icon("chart-bar"),
-      color = "orange",
+      color = "navy",
       width = 12
     )
-
     return(myInfoBox)
   })
+
   # ----- __variation -----
   output$kMeans_variation <- renderUI({
-    myTitle <- "Variation Handled"
-    clusters_data <- get_clusters_data()
+    myTitle <- HTML(paste("Variation", br(), "Handled", sep = ""))
 
-    if (is.null(clusters_data)) {
-      return(infoBox(title = myTitle, value = NULL))
+    # On récupère les valeurs en fonction du mode utilisé.
+    if (input$kMeans_panel1 == "Auto Run")
+    {
+      ## Auto Run.
+      nbCenters <- get_kMeans_optimalNbCenters()
+      kMeans_seed <- get_kMeans_optimalSeed()
+      myIterMax <- 10
+    } else {
+      ## Manual Run.
+      nbCenters <- input$kMeans_nbCenters
+      kMeans_seed <- input$kMeans_seed
+      myIterMax <- input$kMeans_myIterMax
     }
+    indic_df <- get_kMeans_indic()
 
-    nbCenters <- get_kMeans_optimalNbCenters()
-    kMeans_seed <- get_kMeans_optimalSeed()
-
-    if (is.null(nbCenters) | nbCenters == 1 | is.null(kMeans_seed)) {
+    # On gère les cas où les valeurs ne sont pas encore prêtes.
+    if (is.null(nbCenters) | is.null(kMeans_seed) |
+        is.null(myIterMax) | is.null(indic_df)) {
+      handled_variation <- NULL
+    } else if (nbCenters == 1) {
       handled_variation <- 0 %>% paste("%")
     } else {
-      handled_variation <- get_kMeans_indic() %>%
+      handled_variation <- indic_df %>%
         dplyr::filter(nbCenters.col == nbCenters) %>%
         dplyr::filter(kMeans_seed.col == kMeans_seed) %>%
         dplyr::select(handled_variation.col) %>%
@@ -729,116 +807,47 @@ function(input, output) {
       title = myTitle,
       value = handled_variation,
       icon = icon("chart-bar"),
-      color = "green",
+      color = "navy",
       width = 12
     )
 
     return(myInfoBox)
   })
 
-  # ----- __varHist_A -----
-  output$kMeans_varHist_A <- renderPlot({
-    get_varHist_plot()
+  # ----- __heatMap_sil_A -----
+  output$kMeans_heatMap_sil_A <- renderPlot({
+    get_kMeans_heatMap_sil()
   })
 
-  # ----- __varHist_M -----
-  output$kMeans_varHist_M <- renderPlot({
-    get_varHist_plot()
-  })
-
-  # ----- __seedHist_M -----
-  output$kMeans_seedHist_M <- renderPlot({
-    get_seedHist_plot()
-  })
-
-  # ----- __silhouetteExplo -----
-  output$kMeans_silhouetteExplo <- renderUI({
-    myTitle <- "Silhouette Score"
-
-    clusters_data <- get_clusters_data()
-
-    if (is.null(clusters_data)) {
-      return(infoBox(title = myTitle, value = NULL))
-    }
-
-    nbCenters <- input$kMeans_nbCenters
-    kMeans_seed <- input$kMeans_seed
-    myIterMax <- input$kMeans_myIterMax
-
-    if (is.null(nbCenters) | nbCenters == 1 | is.null(kMeans_seed)) {
-      silhouette_score <- 0 %>% paste("%")
-    } else {
-      set.seed(kMeans_seed)
-      kmeans_result <- clusters_data %>%
-        dplyr::select(x, y) %>%
-        kmeans(centers = nbCenters, iter.max = myIterMax)
-
-      silhouette_summary <- cluster::silhouette(
-        kmeans_result$cluster,
-        clusters_data %>%
-          dplyr::select(x, y) %>%
-          dist()
-      ) %>% summary()
-      silhouette_score <- silhouette_summary$si.summary[["Mean"]] %>%
-        magrittr::multiply_by(100) %>% round(1) %>% paste("%")}
-
-    myInfoBox <- infoBox(
-      title = myTitle,
-      value = silhouette_score,
-      icon = icon("chart-bar"),
-      color = "orange",
-      width = 12
-    )
-
-    return(myInfoBox)
-  })
-
-  # ----- __variationExplo -----
-  output$kMeans_variationExplo <- renderUI({
-    myTitle <- "Variation Handled"
-
-    clusters_data <- get_clusters_data()
-
-    if (is.null(clusters_data)) {
-      return(infoBox(title = myTitle, value = NULL))
-    }
-
-    nbCenters <- input$kMeans_nbCenters
-    kMeans_seed <- input$kMeans_seed
-    myIterMax <- input$kMeans_myIterMax
-
-    if (is.null(nbCenters) | nbCenters == 1 | is.null(kMeans_seed)) {
-      handled_variation <- 0 %>% paste("%")
-    } else {
-      set.seed(kMeans_seed)
-      kmeans_result <- clusters_data %>%
-        dplyr::select(x, y) %>%
-        kmeans(centers = nbCenters, iter.max = myIterMax)
-
-      silhouette_summary <- cluster::silhouette(
-        kmeans_result$cluster,
-        clusters_data %>%
-          dplyr::select(x, y) %>%
-          dist()
-      ) %>% summary()
-      handled_variation <- kmeans_result$betweenss %>%
-        magrittr::divide_by(kmeans_result$totss) %>%
-        magrittr::multiply_by(100) %>% round(1) %>% paste("%")
-    }
-
-    myInfoBox <- infoBox(
-      title = myTitle,
-      value = handled_variation,
-      icon = icon("chart-bar"),
-      color = "green",
-      width = 12
-    )
-
-    return(myInfoBox)
+  # ----- __heatMap_sil_M -----
+  output$kMeans_heatMap_sil_M <- renderPlot({
+    get_kMeans_heatMap_sil()
   })
 
   # ----- __plot -----
   output$kMeans_plot <- renderPlot({
+    if (input$kMeans_init == TRUE) {
+      return(get_clusters_plot())
+    }
+
+    plot_kMeans()
+  })
+
+  ranges_kMeans <- reactiveValues(x = NULL, y = NULL)
+
+  observe({
+    brush <- input$kMeans_brush
+    if (!is.null(brush)) {
+      ranges_kMeans$x <- c(brush$xmin, brush$xmax)
+      ranges_kMeans$y <- c(brush$ymin, brush$ymax)
+    } else {
+      ranges_kMeans$x <- NULL
+      ranges_kMeans$y <- NULL
+    }
+  })
+
+  # ----- __zoom -----
+  output$kMeans_zoom <- renderPlot({
     if (input$kMeans_init == TRUE) {
       return(get_clusters_plot())
     }
@@ -857,30 +866,212 @@ function(input, output) {
       nbCenters <- get_kMeans_optimalNbCenters()
       kMeans_seed <- get_kMeans_optimalSeed()
       myIterMax <- 10
-      if (is.null(nbCenters) | is.null(kMeans_seed)) {
-        return(plot.new())
-      }
     }
 
-    set.seed(kMeans_seed)
-    kmeans_result <- clusters_data %>%
-      dplyr::select(x, y) %>%
-      kmeans(centers = nbCenters, iter.max = myIterMax)
+    if (is.null(nbCenters) | is.null(kMeans_seed)) {
+      return(plot.new())
+    }
 
-    p <- data.frame(
+    clusters_space <- clusters_data %>%
+      dplyr::select(x, y)
+    set.seed(kMeans_seed)
+    init_centers <- clusters_space %>%
+      dplyr::slice(sample(nrow(.), size = nbCenters))
+    init_centers_space <- data.frame(
+      init_centers,
+      cluster = 1:nbCenters
+    )
+    kmeans_result <- kmeans(
+      x = clusters_space,
+      centers = init_centers,
+      iter.max = myIterMax
+    )
+
+    kmeans_space <- data.frame(
       cluster = kmeans_result$cluster,
       x = clusters_data$x,
       y = clusters_data$y
-    ) %>% plot_clusters()
+    ) %>% dplyr::arrange(cluster)
+    final_centers_space <- data.frame(
+      kmeans_result$centers,
+      cluster = 1:nbCenters
+    )
 
-    if (input$kMeans_displayCenters) {
+    p <- kmeans_space %>% plot_clusters()
+
+
+    if (input$kMeans_initCenters) {
       p <- p + ggplot2::geom_point(
-        data = as.data.frame(kmeans_result$center),
-        mapping = ggplot2::aes(x = x, y = y),
-        size = 3
+        data = init_centers_space,
+        mapping = ggplot2::aes(x = x, y = y, fill = as.factor(cluster)),
+        size = 3,
+        shape = 22
+      )
+    }
+
+    if (input$kMeans_finalCenters) {
+      p <- p + ggplot2::geom_point(
+        data = final_centers_space,
+        mapping = ggplot2::aes(x = x, y = y, fill = as.factor(cluster)),
+        size = 3,
+        shape = 21
+      )
+    }
+
+    if (input$kMeans_finalCenters | input$kMeans_initCenters) {
+      p <- p + ggplot2::scale_fill_brewer(
+        palette = "Dark2"
+      )
+    }
+
+
+    if (input$kMeans_finalCenters & input$kMeans_initCenters) {
+      p <- p + ggplot2::geom_segment(
+        data = data.frame(
+          init_centers_space,
+          final_centers_space %>%
+            dplyr::mutate(xend = x, yend = y) %>%
+            dplyr::select(-cluster)
+        ),
+        mapping = ggplot2::aes(
+          x = x, y = y,
+          xend = xend, yend = yend
+        ),
+        arrow = ggplot2::arrow(length = ggplot2::unit(0.02, "npc"))
+      )
+    }
+
+    if (!is.null(ranges_kMeans)) {
+      p <- p + ggplot2::coord_cartesian(
+        xlim = ranges_kMeans$x,
+        ylim = ranges_kMeans$y,
+        expand = FALSE
       )
     }
 
     return(p)
+  })
+
+
+  # ----- DBSCAN_reac -----
+
+
+  # ----- __run_DBSCAN -----
+  run_DBSCAN <- reactive({
+    clusters_data <- get_clusters_data()
+
+    if (is.null(clusters_data)) return(NULL)
+
+    if (input$DBSCAN_panel1 == "Manual Run") {
+      myEps <- input$DBSCAN_eps
+      myMinPoints <- input$DBSCAN_minPoints
+    } else {
+      myEps <- 0.8
+      myMinPoints <- 5
+    }
+
+    if (is.null(myEps) | is.null(myMinPoints)) {
+      return(NULL)
+    }
+
+    clusters_space <- clusters_data %>%
+      dplyr::select(x, y)
+
+    DBSCAN_result <- dbscan::dbscan(
+      x = clusters_space,
+      eps = myEps,
+      minPts = myMinPoints,
+      borderPoints = input$DBSCAN_borderPoints
+    )
+
+    return(DBSCAN_result)
+  })
+
+
+  # ----- DBSCAN_output -----
+
+
+  # ----- __info -----
+  output$DBSCAN_info <- renderText({
+    get_clusters_info()
+  })
+
+  # ----- __plot -----
+  output$DBSCAN_plot <- renderPlot({
+    clusters_data <- get_clusters_data()
+
+    if (is.null(clusters_data)) return(plot.new())
+
+    if (input$DBSCAN_init == TRUE) return(get_clusters_plot())
+
+    DBSCAN_result <- run_DBSCAN()
+
+    if (is.null(DBSCAN_result)) return(plot.new())
+
+    DBSCAN_space <- data.frame(
+      cluster = DBSCAN_result$cluster,
+      x = clusters_data$x,
+      y = clusters_data$y
+    ) %>%
+      dplyr::arrange(cluster) %>%
+      dplyr::mutate(cluster = ifelse(cluster == 0, NA, cluster))
+
+    p <- DBSCAN_space %>% plot_clusters()
+
+    if (input$DBSCAN_density) {
+      circle_base <- circleFun(
+        center = c(0,0),
+        r = DBSCAN_result$eps,
+        npoints = 20
+      ) %>% dplyr::slice(rep(1:20, nrow(DBSCAN_space)))
+      circle_points <- DBSCAN_space %>%
+        dplyr::slice(
+          plyr::llply(1:nrow(DBSCAN_space), rep, 20) %>% unlist()
+        )
+      circle_points$x <- circle_points$x + circle_base$x
+      circle_points$y <- circle_points$y + circle_base$y
+
+      p <- p + ggplot2::geom_point(
+        mapping = ggplot2::aes(x = x, y = y),
+        data = circle_points,
+        size = 0.1,
+        alpha = 0.2
+      )
+    }
+
+    return(p)
+  })
+
+  # ----- __silhouette -----
+  output$DBSCAN_silhouette <- renderUI({
+    myTitle <- HTML(paste("Silhouette", br(), "Score", sep = ""))
+
+    silhouette_score <- NULL
+
+    myInfoBox <- infoBox(
+      title = myTitle,
+      value = silhouette_score,
+      icon = icon("chart-bar"),
+      color = "navy",
+      width = 12
+    )
+    return(myInfoBox)
+  })
+
+  # ----- __variation -----
+  output$DBSCAN_variation <- renderUI({
+    myTitle <- HTML(paste("Variation", br(), "Handled", sep = ""))
+
+    handled_variation <- NULL
+
+    myInfoBox <- infoBox(
+      title = myTitle,
+      value = handled_variation,
+      icon = icon("chart-bar"),
+      color = "navy",
+      width = 12
+    )
+
+    return(myInfoBox)
   })
 }

@@ -42,9 +42,22 @@ page_genData <- function()
             outputId = "genData_info"
           )
         ),
-        plotOutput(
-          height = "600px",
-          outputId = "genData_plot"
+        fluidRow(
+          column(
+            width = 6,
+            plotOutput(
+              height = "600px",
+              outputId = "genData_plot",
+              brush = brushOpts(id = "genData_brush", resetOnNew = FALSE)
+            )
+          ),
+          column(
+            width = 6,
+            plotOutput(
+              height = "600px",
+              outputId = "genData_plot_2"
+            )
+          )
         )
       )
     )

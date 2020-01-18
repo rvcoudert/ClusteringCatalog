@@ -1,4 +1,4 @@
-/* __Style standard.__ */
+/* __Style standard__ */
 
 /* Tous les titres. */
 @import url('https://fonts.googleapis.com/css?family=Caveat+Brush&display=swap');
@@ -9,27 +9,94 @@ h1, h2, h3, h4, h5, h6 {
 /* Centrer uniquement le premier niveau de titre. */
 h1 {
 	text-align: center;
+}*
+
+/* __DashBoardHeader __*/
+
+.navbar-custom-menu .fa {
+	color: #d73925;
 }
 
-/* __Set Slider in the header.__ */
-/* Limiter la hauteur du header. */
-header {
-	max-height: 50px!important;
-    overflow: hidden;
+/* __DashBoardBody__*/
+
+/* Décaler en bas le corps de page. */
+.content {
+	margin-top: 50px;
 }
 
 
-/* __Double-sized Checkboxes in Sidebar.__ */
-.well input[type=checkbox] {
-	-ms-transform: scale(1.5); /* IE */
-	-moz-transform: scale(1.5); /* FF */
-	-webkit-transform: scale(1.5); /* Safari and Chrome */
-	-o-transform: scale(1.5); /* Opera */
-	transform: scale(1.5);
-	padding: 10px;
+/* __TabSetPanel__ */
+/* Colorer les onglets. */
+.nav-tabs > li > a {
+	background-color: none;
+	color: black;
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.nav-tabs > li > a:hover,
+.nav-tabs > li > a:focus {
+	background-color: white;
+	color: #d73925;
+}
+.nav-tabs > li > a:active {
+	background-color: #dd4b39;
+	color: white;
 }
 
-/* __Align label in ValueBox.__ */
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:hover,
+.nav-tabs > li.active > a:focus {
+	background-color: #d73925;
+	color: white;
+}
+
+
+/* __ValueBox__*/
+/* Centrer le texte. */
 .small-box {
 	text-align: center;
+}
+
+
+/* __Infobox__*/
+/* Centrer le texte et le nombre. */
+.info-box-text {
+	text-align: center;
+}
+.info-box-number{
+	text-align: center;
+}
+/* Régler la hauteur. */
+.info-box {min-height: 65px;}
+.info-box-icon {height: 65px; line-height: 65px;}
+.info-box-content {padding-top: 0px; padding-bottom: 0px;}
+
+
+/* __Slider__ */
+.irs-single {
+	background: #dd4b39;
+}
+.irs-bar, .irs-bar-edge {
+	border-top: 1px solid #dd4b39;
+	border-bottom: 1px solid #dd4b39;
+	background: #dd4b39;
+}
+
+/* __Custom Checkbox__ */
+.myCheckbox input[type=checkbox]{
+    width: 1em;
+    height: 1em;
+    background-color: white;
+    vertical-align: middle;
+    border: 1px solid black;
+    -webkit-appearance: none;
+    outline: none;
+    cursor: pointer;
+}
+
+.myCheckbox input[type=checkbox]:checked{
+    background-color: #dd4b39;
+}
+
+.round input[type=checkbox]{
+    border-radius: 100%;
 }
