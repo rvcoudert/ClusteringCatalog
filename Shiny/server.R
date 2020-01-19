@@ -269,16 +269,16 @@ plot_clusters <- function(clusters_points, xlim = NULL, ylim = NULL) {
     palette = "Dark2",
     guide = FALSE,
     na.value = "black"
-  # ) + ggplot2::theme_bw(
-  #   base_size = 16
+  ) + ggplot2::theme_bw(
+    base_size = 14
   ) + ggplot2::theme(
     legend.position = "none",
-    plot.title = ggplot2::element_text(hjust = 0.5)
-    # panel.grid = ggplot2::element_blank(),
-    # panel.border = ggplot2::element_blank(),
-    # axis.title = ggplot2::element_blank(),
-    # axis.text = ggplot2::element_blank(),
-    # axis.ticks = ggplot2::element_blank()
+    plot.title = ggplot2::element_text(hjust = 0.5),
+    panel.grid = ggplot2::element_blank(),
+    panel.border = ggplot2::element_blank(),
+    axis.title = ggplot2::element_blank(),
+    axis.text = ggplot2::element_blank(),
+    axis.ticks = ggplot2::element_blank()
   )
 
   # if (is.null(xlim) | is.null(ylim)) {
@@ -606,7 +606,7 @@ function(input, output) {
       p <- p + ggplot2::geom_point(
         data = init_centers_space,
         mapping = ggplot2::aes(x = x, y = y, fill = as.factor(cluster)),
-        size = 3,
+        size = 6,
         shape = 22
       )
     }
@@ -615,7 +615,7 @@ function(input, output) {
       p <- p + ggplot2::geom_point(
         data = final_centers_space,
         mapping = ggplot2::aes(x = x, y = y, fill = as.factor(cluster)),
-        size = 3,
+        size = 6,
         shape = 21
       )
     }
