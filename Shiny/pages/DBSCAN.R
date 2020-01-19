@@ -19,17 +19,10 @@ page_DBSCAN <- function()
           # ----- ____Auto Run -----
           tabPanel(
             title = "Auto Run",
-            h4("Selected parameters."),
-            # fluidRow(
-            #   uiOutput(
-            #     outputId = "DBSCAN_optimalNbCenters"
-            #   ),
-            #   uiOutput(
-            #     outputId = "DBSCAN_optimalSeed"
-            #   )
-            # ),
-            h4("exp ? minPts ?"),
-            p("How to define density ?")
+            h4("Default parameters."),
+            p("eps = 1"),
+            p("minPts = 5"),
+            p("How to define density ? How to define minPts ?")
           ),
           # ----- ____Manual Run -----
           tabPanel(
@@ -39,18 +32,18 @@ page_DBSCAN <- function()
               h4("Manual exploring"),
               numericInput(
                 inputId = "DBSCAN_eps",
-                label = "Epsilon",,
+                label = "Epsilon",
                 min = 0,
                 step = 0.1,
-                max = 1,
-                value =  0.5
+                max = 10,
+                value =  1
               ),
               numericInput(
                 inputId = "DBSCAN_minPoints",
                 label = "minPoints",
                 min = 2,
                 step = 1,
-                max = 10,
+                max = 20,
                 value =  5
               )
             )
@@ -73,22 +66,27 @@ page_DBSCAN <- function()
             uiOutput(outputId = "DBSCAN_variation")
           )
         ),
-        plotOutput(
-          height = "600px",
-          outputId = "DBSCAN_plot"
-        ),
         fluidRow(
           column(
-            width = 4,
-            class = "myCheckbox square",
-            checkboxInput(
-              inputId = "DBSCAN_init",
-              label = "Initial Data",
-              value = FALSE
+            width = 6,
+            plotOutput(
+              height = "500px",
+              outputId = "DBSCAN_plot",
+              brush = brushOpts(id = "DBSCAN_brush", resetOnNew = FALSE)
             )
           ),
           column(
-            width = 4,
+            width = 6,
+            plotOutput(
+              height = "500px",
+              outputId = "DBSCAN_plot_2",
+              brush = brushOpts(id = "DBSCAN_brush_2")
+            )
+          )
+        ),
+        fluidRow(
+          column(
+            width = 2,
             class = "myCheckbox square",
             checkboxInput(
               inputId = "DBSCAN_borderPoints",
@@ -103,6 +101,24 @@ page_DBSCAN <- function()
               inputId = "DBSCAN_density",
               label = "Density",
               value = FALSE
+            )
+          ),
+          column(
+            width = 4,
+            class = "myCheckbox square",
+            fluidRow(
+              column(
+                width = 2,
+                p("Zoom")
+              ),
+              column(
+                width = 2,
+                materialSwitch(inputId = "DBSCAN_init")
+              ),
+              column(
+                width = 8,
+                p("Initial Clusters")
+              )
             )
           )
         )

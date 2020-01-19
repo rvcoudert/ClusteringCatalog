@@ -108,22 +108,13 @@ page_kMeans <- function()
             width = 6,
             plotOutput(
               height = "500px",
-              outputId = "kMeans_zoom"
+              outputId = "kMeans_plot_2"
             )
           )
         ),
         fluidRow(
           column(
-            width = 4,
-            class = "myCheckbox square",
-            checkboxInput(
-              inputId = "kMeans_init",
-              label = "Initial Data",
-              value = FALSE
-            )
-          ),
-          column(
-            width = 4,
+            width = 2,
             class = "myCheckbox square",
             checkboxInput(
               inputId = "kMeans_initCenters",
@@ -138,6 +129,24 @@ page_kMeans <- function()
               inputId = "kMeans_finalCenters",
               label = "Final Centers",
               value = TRUE
+            )
+          ),
+          column(
+            width = 4,
+            class = "myCheckbox square",
+            fluidRow(
+              column(
+                width = 2,
+                p("Zoom")
+              ),
+              column(
+                width = 2,
+                materialSwitch(inputId = "kMeans_init")
+              ),
+              column(
+                width = 8,
+                p("Initial Clusters")
+              )
             )
           )
         )

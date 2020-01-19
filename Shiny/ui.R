@@ -67,14 +67,10 @@ dashboardPagePlus(
         tooltip = tooltipOptions(title = "Data Parameters"),
         size = "sm",
         icon =  icon("sliders"),
-        # icon =  tags$i(
-        #   class = "fa fa-sliders",
-        #   style = "color: rgb(0,166,90)"
-        # ),
-        # right = TRUE,
+        h4("Data Generation"),
         radioButtons(
           inputId = "genData_method",
-          label = "Data Generation",
+          label = "Method",
           selected = "blobs",
           choiceNames = c("Blobs", "Moons", "Concentric Circles"),
           choiceValues = c("blobs", "moons", "circles")
@@ -94,6 +90,13 @@ dashboardPagePlus(
           max = 10,
           value = 1,
           step = 0.1
+        ),
+        sliderTextInput(
+          inputId = "genData_clusterSdVar",
+          label = "Dispersion Variation",
+          choices = 0:20 / 10,
+          selected = 0,
+          grid = TRUE
         ),
         sliderTextInput(
           inputId = "seed",
@@ -121,13 +124,13 @@ dashboardPagePlus(
       menuItem(
         text = "Home",
         tabName = "home",
-        icon = icon("home")
+        icon = icon("home"),
+        selected = TRUE
       ),
       menuItem(
         text = "Data Vizualisation",
         tabName = "genData",
-        icon = icon("database"),
-        selected = TRUE
+        icon = icon("database")
       ),
       menuItem(
         text = "k-Means",
