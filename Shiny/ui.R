@@ -124,8 +124,7 @@ dashboardPagePlus(
       menuItem(
         text = "Home",
         tabName = "home",
-        icon = icon("home"),
-        selected = TRUE
+        icon = icon("home")
       ),
       menuItem(
         text = "Data Vizualisation",
@@ -141,20 +140,23 @@ dashboardPagePlus(
         text = "DBSCAN",
         tabName = "DBSCAN",
         icon = icon("spinner")
+      ),
+      menuItem(
+        text = "Hierarchical",
+        tabName = "hierarchical",
+        icon = icon("spinner"),
+        selected = TRUE
       )
     )
   ),
   # ----- dashboardBody -----
   body = dashboardBody(
     tabItems(
-      # ----- __home -----
       page_home(),
-      # ----- __genData -----
       page_genData(),
-      # ----- __kMeans -----
       page_kMeans(),
-      # ----- __DBSCAN -----
-      page_DBSCAN()
+      page_DBSCAN(),
+      page_hierarchical()
     )
   )
 )

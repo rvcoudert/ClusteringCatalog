@@ -27,25 +27,20 @@ page_DBSCAN <- function()
           # ----- ____Manual Run -----
           tabPanel(
             title = "Manual Run",
-            tabPanel(
-              title = "Explore",
-              h4("Manual exploring"),
-              numericInput(
-                inputId = "DBSCAN_eps",
-                label = "Epsilon",
-                min = 0,
-                step = 0.1,
-                max = 10,
-                value =  1
-              ),
-              numericInput(
-                inputId = "DBSCAN_minPoints",
-                label = "minPoints",
-                min = 2,
-                step = 1,
-                max = 20,
-                value =  5
-              )
+            h4("Manual exploring"),
+            sliderTextInput(
+              inputId = "DBSCAN_eps",
+              label = "Epsilon",
+              choices = 1:50 / 10,
+              selected = 1,
+              grid = TRUE
+            ),
+            sliderTextInput(
+              inputId = "DBSCAN_minPoints",
+              label = "minPoints",
+              choices = 1:20,
+              selected = 5,
+              grid = TRUE
             )
           )
         )
@@ -54,16 +49,12 @@ page_DBSCAN <- function()
       mainPanel = mainPanel(
         fluidRow(
           column(
-            width = 4,
+            width = 8,
             h3(textOutput(outputId = "DBSCAN_info"))
           ),
           column(
             width = 4,
             uiOutput(outputId = "DBSCAN_silhouette")
-          ),
-          column(
-            width = 4,
-            uiOutput(outputId = "DBSCAN_variation")
           )
         ),
         fluidRow(

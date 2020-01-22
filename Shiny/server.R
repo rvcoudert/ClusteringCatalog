@@ -788,7 +788,7 @@ function(input, output) {
       legend.position = "bottom",
       legend.key.size = ggplot2::unit(1, "cm"),
       legend.title = ggplot2::element_text(vjust = 0.9),
-      legend.text = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5),
+      legend.text = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5)
     )
 
     return(p)
@@ -952,6 +952,7 @@ function(input, output) {
   output$kMeans_plot_2 <- renderPlot({
     if (input$kMeans_init == TRUE) {
       p <- get_clusters_plot() +
+        ggplot2::coord_fixed() +
         ggplot2::labs(title = "Initial clusters")
       return(p)
     }
@@ -1045,6 +1046,40 @@ function(input, output) {
     get_clusters_info()
   })
 
+  # ----- __silhouette -----
+  output$DBSCAN_silhouette <- renderUI({
+    myTitle <- HTML(paste("Silhouette", br(), "Score", sep = ""))
+
+    clusters_data <- get_clusters_data()
+    DBSCAN_result <- run_DBSCAN()
+
+    if (is.null(DBSCAN_result) | is.null(clusters_data)) {
+      silhouette_score <- NULL
+    } else {
+      if ((DBSCAN_result$cluster %>% unique() %>% length()) == 1) {
+        silhouette_score <- NULL
+      } else {
+        silhouette_summary <- cluster::silhouette(
+          DBSCAN_result$cluster,
+          clusters_data %>%
+            dplyr::select(x, y) %>%
+            dist()
+        ) %>% summary()
+        silhouette_score <- silhouette_summary$si.summary[["Mean"]] %>%
+          magrittr::multiply_by(100) %>% round(1) %>% paste("%")
+      }
+    }
+
+    myInfoBox <- infoBox(
+      title = myTitle,
+      value = silhouette_score,
+      icon = icon("chart-bar"),
+      color = "navy",
+      width = 12
+    )
+    return(myInfoBox)
+  })
+
   # ----- __plot -----
   output$DBSCAN_plot <- renderPlot({
     clusters_data <- get_clusters_data()
@@ -1116,10 +1151,24 @@ function(input, output) {
     }
   })
 
+  ranges_2_DBSCAN <- reactiveValues(x = NULL, y = NULL)
+
+  observe({
+    brush <- input$DBSCAN_brush_2
+    if (!is.null(brush)) {
+      ranges_2_DBSCAN$x <- c(brush$xmin, brush$xmax)
+      ranges_2_DBSCAN$y <- c(brush$ymin, brush$ymax)
+    } else {
+      ranges_2_DBSCAN$x <- NULL
+      ranges_2_DBSCAN$y <- NULL
+    }
+  })
+
   # ----- __plot_2 -----
   output$DBSCAN_plot_2 <- renderPlot({
     if (input$DBSCAN_init == TRUE) {
       p <- get_clusters_plot() +
+        ggplot2::coord_fixed() +
         ggplot2::labs(title = "Initial clusters")
       return(p)
     }
@@ -1197,41 +1246,282 @@ function(input, output) {
     return(p)
   })
 
-  ranges_2_DBSCAN <- reactiveValues(x = NULL, y = NULL)
 
-  observe({
-    brush <- input$DBSCAN_brush_2
-    if (!is.null(brush)) {
-      ranges_2_DBSCAN$x <- c(brush$xmin, brush$xmax)
-      ranges_2_DBSCAN$y <- c(brush$ymin, brush$ymax)
-    } else {
-      ranges_2_DBSCAN$x <- NULL
-      ranges_2_DBSCAN$y <- NULL
+
+  # ----- hierarchical_reac -----
+
+  # ----- __results -----
+
+  get_hierarchical_results <- reactive({
+    clusters_data <- get_clusters_data()
+
+    if (is.null(clusters_data)) {
+      return(NULL)
     }
+
+    clusters_space <- clusters_data %>%
+      dplyr::select(x, y)
+
+    # Les scores sont calculés pour chaque méthode.
+    all_results <- list(
+      "single",
+      "average",
+      "median",
+      "complete",
+      "centroid",
+      "ward.D2"
+    ) %>%
+      magrittr::set_names(x = ., value = .) %>%
+      plyr::llply(function(myMethod) {
+      results <- NbClust::NbClust(
+        data = clusters_space,
+        min.nc = 2,
+        max.nc = 8,
+        method = myMethod,
+        index = "silhouette"
+      )
+      append(results, c(method = myMethod))
+    })
+
+    All.index <- plyr::ldply(all_results, function(results) {
+      data.frame(
+        nc = names(results$All.index),
+        index = results$All.index
+      )
+    }, .id = "method") %>%
+      dplyr::mutate(nc = nc %>% as.character() %>% as.integer())
+
+    Best.nc <- plyr::ldply(all_results, function(results) {
+      data.frame(
+        nc = names(results$Best.nc),
+        index = results$Best.nc
+      )
+    }, .id = "method")
+
+
+    Best.partition <- plyr::llply(all_results, function(results) {
+      results$Best.partition
+    })
+
+    all_results <- list(
+      All.index = All.index,
+      Best.nc = Best.nc,
+      Best.partition = Best.partition
+    )
+
+    return(all_results)
+  })
+
+
+  # ----- __run_hierarchical -----
+  run_hierarchical <- reactive({
+
+    if (input$hierarchical_panel1 == "Manual Run") {
+      myMethod <- input$hierarchical_method
+
+      if (is.null(myMethod)) {
+        return(NULL)
+      }
+
+      if (input$hierarchical_nbClustersAuto == TRUE)
+      {
+        all_results <- get_hierarchical_results()
+
+        if (is.null(all_results)) return(NULL)
+
+        best_choice <- all_results$All.index %>%
+          dplyr::filter(method == myMethod) %>%
+          dplyr::filter(index == max(index))
+
+        myNc <- best_choice$nc[[1]]
+        myIndex <- best_choice$index[[1]]
+
+        myPartition <- all_results$Best.partition[[myMethod]]
+
+        hierarchical_results <- list(
+          nc = myNc,
+          index = myIndex,
+          method = myMethod,
+          partition = myPartition
+        )
+      } else {
+        myMinNc <- input$hierarchical_nbClusters
+        myMaxNc <- input$hierarchical_nbClusters
+
+        if (is.null(myMinNc) | is.null(myMaxNc)) {
+          return(NULL)
+        }
+
+        clusters_data <- get_clusters_data()
+
+        if (is.null(clusters_data)) {
+          return(NULL)
+        }
+
+        clusters_space <- clusters_data %>%
+          dplyr::select(x, y)
+
+        temp_results <- NbClust::NbClust(
+          data = clusters_space,
+          min.nc = myMinNc,
+          max.nc = myMaxNc,
+          method = myMethod,
+          index = "silhouette"
+        )
+
+        hierarchical_results <- list(
+          nc = temp_results$Best.nc[["Number_clusters"]],
+          index = temp_results$Best.nc[["Value_Index"]],
+          method = myMethod,
+          partition = temp_results$Best.partition
+        )
+      }
+    } else {
+      all_results <- get_hierarchical_results()
+
+      if (is.null(all_results)) return(NULL)
+
+      best_choice <- all_results$All.index %>%
+        dplyr::filter(index == max(index))
+      myNc <- best_choice$nc[[1]]
+      myIndex <- best_choice$index[[1]]
+      myMethod <- best_choice$method[[1]]
+      myPartition <- all_results$Best.partition[[myMethod]]
+
+      hierarchical_results <- list(
+        nc = myNc %>% as.integer(),
+        index = myIndex,
+        method = myMethod %>%
+          as.character(),
+        partition = myPartition
+      )
+    }
+
+    return(hierarchical_results)
+  })
+
+
+  # ----- __plot_hierarchical_heatmap -----
+  plot_hierarchical_heatmap <- reactive({
+    all_results <- get_hierarchical_results()
+
+    if (is.null(all_results)) return(plot.new())
+
+    myColours <- c(
+      "darkred", "red3", "red",
+      "orangered", "gold2",
+      "forestgreen", "darkgreen")
+    names(myColours) <-
+      c(0, 0.1, 0.2,
+        0.4, 0.5,
+        0.8, 1)
+    xBreaks <- c(
+      Single = "single",
+      Average = "average",
+      Median = "median",
+      Complete = "complete",
+      Centroid = "centroid",
+      Ward = "ward.D2")
+
+    p <- ggplot2::ggplot(
+      data = all_results$All.index,
+      mapping = ggplot2::aes(
+        x = method,
+        y = nc,
+        fill = index
+      )
+    ) + ggplot2::geom_tile(
+    ) + ggplot2::scale_fill_gradientn(
+      colours = myColours,
+      values = names(myColours)
+    ) + ggplot2::scale_x_discrete(
+      breaks = xBreaks %>% unname(),
+      limits = xBreaks %>% unname(),
+      labels = xBreaks %>% names(),
+      expand = c(0,0)
+    ) + ggplot2::scale_y_discrete(
+      breaks = 2:8,
+      limits = 2:8,
+      expand = c(0,0)
+    ) + ggplot2::labs(
+      x = "Hierachical Method",
+      y = "Number of Expected Clusters",
+      fill = "Silhouette Score"
+    ) + ggplot2::theme(
+      legend.position = "bottom",
+      legend.key.size = ggplot2::unit(1, "cm"),
+      legend.title = ggplot2::element_text(vjust = 0.9),
+      legend.text = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5)
+    )
+
+    return(p)
+  })
+
+
+
+  # ----- __plot_hierarchical -----
+  plot_hierarchical <- reactive({
+    clusters_data <- get_clusters_data()
+
+    if (is.null(clusters_data)) return(plot.new())
+
+    hierarchical_results <- run_hierarchical()
+
+    if (is.null(hierarchical_results)) return(plot.new())
+
+    hierarchical_space <- data.frame(
+      cluster = hierarchical_results$partition,
+      x = clusters_data$x,
+      y = clusters_data$y
+    ) %>%
+      dplyr::arrange(cluster)
+
+    p <- hierarchical_space %>% plot_clusters()
+
+    return(p)
+  })
+
+
+  # ----- hierarchical_output -----
+
+
+  # ----- __nbClustersAutoUI -----
+  output$hierarchical_nbClustersAutoUI <- renderUI({
+    if (!is.null(input$hierarchical_nbClustersAuto)) {
+      if (!input$hierarchical_nbClustersAuto == TRUE) {
+        return(
+          sliderTextInput(
+            inputId = "hierarchical_nbClusters",
+            label = "Manual Expected clusters",
+            choices = 2:8,
+            selected = 3,
+            grid = TRUE
+          )
+        )
+      }
+    }
+
+    return(NULL)
+  })
+
+
+  # ----- __info -----
+  output$hierarchical_info <- renderText({
+    get_clusters_info()
   })
 
   # ----- __silhouette -----
-  output$DBSCAN_silhouette <- renderUI({
+  output$hierarchical_silhouette <- renderUI({
     myTitle <- HTML(paste("Silhouette", br(), "Score", sep = ""))
 
-    clusters_data <- get_clusters_data()
-    DBSCAN_result <- run_DBSCAN()
+    hierarchical_results <- run_hierarchical()
 
-    if (is.null(DBSCAN_result) | is.null(clusters_data)) {
+    if (is.null(hierarchical_results)) {
       silhouette_score <- NULL
     } else {
-      if ((DBSCAN_result$cluster %>% unique() %>% length()) == 1) {
-        silhouette_score <- NULL
-      } else {
-      silhouette_summary <- cluster::silhouette(
-        DBSCAN_result$cluster,
-        clusters_data %>%
-          dplyr::select(x, y) %>%
-          dist()
-      ) %>% summary()
-      silhouette_score <- silhouette_summary$si.summary[["Mean"]] %>%
+      silhouette_score <- hierarchical_results$index[[1]] %>%
         magrittr::multiply_by(100) %>% round(1) %>% paste("%")
-      }
+
     }
 
     myInfoBox <- infoBox(
@@ -1244,27 +1534,69 @@ function(input, output) {
     return(myInfoBox)
   })
 
-  # ----- __variation -----
-  output$DBSCAN_variation <- renderUI({
-    myTitle <- HTML(paste("Variation", br(), "Handled", sep = ""))
+  # ----- __plot -----
+  output$hierarchical_plot <- renderPlot({
+    p <- plot_hierarchical()
 
-    clusters_data <- get_clusters_data()
-    DBSCAN_result <- run_DBSCAN()
+    if (is.null(p)) return(plot.new())
 
-    if (is.null(DBSCAN_result) | is.null(clusters_data)) {
-      handled_variation <- NULL
+    p <- p +
+      ggplot2::coord_fixed() +
+      ggplot2::labs(title = "General View")
+
+    return(p)
+  })
+
+  ranges_hierarchical <- reactiveValues(x = NULL, y = NULL)
+
+  observe({
+    brush <- input$hierarchical_brush
+    if (!is.null(brush)) {
+      ranges_hierarchical$x <- c(brush$xmin, brush$xmax)
+      ranges_hierarchical$y <- c(brush$ymin, brush$ymax)
     } else {
-      handled_variation <- NULL
+      ranges_hierarchical$x <- NULL
+      ranges_hierarchical$y <- NULL
+    }
+  })
+
+  # ----- __plot_2 -----
+  output$hierarchical_plot_2 <- renderPlot({
+    if (input$hierachical_plotChoice == "init") {
+      p <- get_clusters_plot() +
+        ggplot2::coord_fixed() +
+        ggplot2::labs(title = "Initial clusters")
+      return(p)
     }
 
-    myInfoBox <- infoBox(
-      title = myTitle,
-      value = handled_variation,
-      icon = icon("chart-bar"),
-      color = "navy",
-      width = 12
-    )
+    if (input$hierachical_plotChoice == "zoom") {
+      if (is.null(ranges_hierarchical$x) | is.null(ranges_hierarchical$y)) {
+        message <- "Waiting for zoom."
+        p <- ggplot2::ggplot(
+        ) + ggplot2::annotate(
+          "text", x = 0, y = 0, size = 8, label = message
+        ) + ggplot2::theme_void()
+        return(p)
+      } else {
+        p <- plot_hierarchical(
+        ) + ggplot2::coord_cartesian(
+          xlim = ranges_hierarchical$x,
+          ylim = ranges_hierarchical$y,
+          expand = FALSE
+        ) + ggplot2::labs(
+          title = "Zoom"
+        )
+        return(p)
+      }
+    }
 
-    return(myInfoBox)
+    if (input$hierachical_plotChoice == "heatmap") {
+      p <- plot_hierarchical_heatmap()
+      return(p)
+    }
+
+      return(plot.new())
   })
+
+
 }

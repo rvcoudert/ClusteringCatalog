@@ -43,37 +43,34 @@ page_kMeans <- function()
           # ----- ____Manual Run -----
           tabPanel(
             title = "Manual Run",
-            tabPanel(
-              title = "Explore",
-              h4("Manual exploring"),
-              sliderTextInput(
-                inputId = "kMeans_nbCenters",
-                label = "Expected clusters",
-                choices = 1:8,
-                selected = 3,
-                grid = TRUE
-              ),
-              sliderTextInput(
-                inputId = "kMeans_seed",
-                label = "kMeans seed",
-                choices = 1:20,
-                selected = 1,
-                animate = TRUE,
-                grid = TRUE
-              ),
-              sliderTextInput(
-                inputId = "kMeans_myIterMax",
-                label = "Maximum of iterations",
-                choices = 1:20,
-                selected = 10,
-                grid = TRUE
-              ),
-              fluidPage(
-                h4("Silhouette score VS nbCenters / kMeans_seed"),
-                plotOutput(
-                  outputId = "kMeans_heatMap_sil_M",
-                  height = "400px"
-                )
+            h4("Manual exploring"),
+            sliderTextInput(
+              inputId = "kMeans_nbCenters",
+              label = "Expected clusters",
+              choices = 1:8,
+              selected = 3,
+              grid = TRUE
+            ),
+            sliderTextInput(
+              inputId = "kMeans_seed",
+              label = "kMeans seed",
+              choices = 1:20,
+              selected = 1,
+              animate = TRUE,
+              grid = TRUE
+            ),
+            sliderTextInput(
+              inputId = "kMeans_myIterMax",
+              label = "Maximum of iterations",
+              choices = 1:20,
+              selected = 10,
+              grid = TRUE
+            ),
+            fluidPage(
+              h4("Silhouette score VS nbCenters / kMeans_seed"),
+              plotOutput(
+                outputId = "kMeans_heatMap_sil_M",
+                height = "400px"
               )
             )
           )
@@ -83,17 +80,17 @@ page_kMeans <- function()
       mainPanel = mainPanel(
         fluidRow(
           column(
-            width = 4,
+            width = 8,
             h3(textOutput(outputId = "kMeans_info"))
           ),
           column(
             width = 4,
             uiOutput(outputId = "kMeans_silhouette")
-          ),
-          column(
-            width = 4,
-            uiOutput(outputId = "kMeans_variation")
           )
+          # column(
+          #   width = 4,
+          #   uiOutput(outputId = "kMeans_variation")
+          # )
         ),
         fluidRow(
           column(
