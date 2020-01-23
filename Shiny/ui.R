@@ -1,10 +1,15 @@
+# TODO:
+#   - Replacer la HeatMap de kMeans.
+#   - Piper les méthodes de clustering.
+
 library(magrittr)
 library(shiny)
 library(shinyWidgets)
 library(shinydashboard)
 library(shinydashboardPlus)
+library(mclust)
 
-#list of packages required
+# list of packages required
 list.of.packages <- c(
   "magrittr",
   "shiny",
@@ -15,12 +20,12 @@ list.of.packages <- c(
   "reshape2",
   "cluster")
 
-#checking missing packages from list
+# checking missing packages from list
 new.packages <- list.of.packages[
   !(list.of.packages %in% installed.packages()[
     ,"Package"])]
 
-#install missing ones
+# install missing ones
 if (length(new.packages)) install.packages(new.packages, dependencies = TRUE)
 
 # Changer le répertoire de travail sur celui du script en cours.
@@ -61,7 +66,7 @@ dashboardPagePlus(
       tag = span(class = "logo-lg", "ClusteringCatalog"),
       attr = icon("window-restore")
     ),
-    fixed = TRUE,
+    # fixed = TRUE,
     left_menu = tagList(
       dropdownButton(
         tooltip = tooltipOptions(title = "Data Parameters"),
@@ -124,7 +129,8 @@ dashboardPagePlus(
       menuItem(
         text = "Home",
         tabName = "home",
-        icon = icon("home")
+        icon = icon("home"),
+        selected = TRUE
       ),
       menuItem(
         text = "Data Vizualisation",
@@ -144,8 +150,12 @@ dashboardPagePlus(
       menuItem(
         text = "Hierarchical",
         tabName = "hierarchical",
-        icon = icon("spinner"),
-        selected = TRUE
+        icon = icon("spinner")
+      ),
+      menuItem(
+        text = "Model-Based",
+        tabName = "modelbased",
+        icon = icon("spinner")
       )
     )
   ),
@@ -156,7 +166,8 @@ dashboardPagePlus(
       page_genData(),
       page_kMeans(),
       page_DBSCAN(),
-      page_hierarchical()
+      page_hierarchical(),
+      page_modelbased()
     )
   )
 )

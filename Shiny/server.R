@@ -264,7 +264,7 @@ plot_clusters <- function(clusters_points, xlim = NULL, ylim = NULL) {
       y = y,
       colour = as.factor(cluster)
     ),
-    size = 3
+    size = 2
   ) + ggplot2::scale_color_brewer(
     palette = "Dark2",
     guide = FALSE,
@@ -298,6 +298,13 @@ plot_clusters <- function(clusters_points, xlim = NULL, ylim = NULL) {
 
   return(p)
 }
+
+
+# clusters_data <- make_blobs(
+#   n_samples = 500,
+#   centers = 6,
+#   cluster_sd_var = 0.5
+# )
 
 
 circleFun <- function(center = c(0,0), r = 1, npoints = 20) {
@@ -442,36 +449,68 @@ function(input, output) {
   # ----- __clusters_info -----
 
   get_clusters_info <- reactive({
+    nullBox <- valueBox(
+      subtitle = NULL,
+      value = NULL,
+      icon = icon("chart-bar"),
+      color = "red",
+      width = 12
+    )
+
     method <- input$genData_method
 
+    if (is.null(input$genData_method)) return(nullBox)
+
+    mySubtitle <- paste("Generated (", input$genData_method, ")", sep = "")
+
     if (input$genData_method %in% c("moons", "circles")) {
-      nbClusters <- 2
+      nc <- 2
     }
 
     if (input$genData_method == "blobs") {
-      nbClusters <- input$genData_blobsNbClusters
+      nc <- input$genData_blobsNbClusters
     }
 
-    if (is.null(nbClusters)) {
-      return("3 clusters (blobs)")
+    if (is.null(nc)) {
+      nc <- 3
     }
 
-    if (nbClusters == 1) {
-      cluster_string <- "1 cluster"
+    if (nc == 1) {
+      myValue <- "1 cluster"
     } else {
-      cluster_string <- paste(nbClusters, "clusters")
+      myValue <- paste(nc, "clusters")
     }
 
-    return(paste(
-      cluster_string,
-      " (",
-      method,
-      ")",
-      sep = ""
-    ))
+    myValueBox <- valueBox(
+      subtitle = mySubtitle,
+      value = myValue,
+      icon = icon("chart-bar"),
+      color = "red",
+      width = 12
+    )
+
+    return(myValueBox)
   })
 
-  0# ----- __clusters_plot -----
+  # ----- __silhouette -----
+
+  get_clusters_silhouette <- reactive({
+    clusters_data <- get_clusters_data()
+    if (is.null(clusters_data)) {
+      return(NULL)
+    }
+
+    silhouette_summary <- cluster::silhouette(
+      x = clusters_data$cluster,
+      dist = dist(clusters_data %>% dplyr::select(x, y))
+    ) %>% summary()
+    silhouette_mean <- silhouette_summary$si.summary[["Mean"]]
+    return(silhouette_mean)
+  })
+
+
+
+  # ----- __clusters_plot -----
 
   get_clusters_plot <- reactive({
     clusters_data <- get_clusters_data()
@@ -486,8 +525,28 @@ function(input, output) {
   # ----- genData_output -----
 
   # ----- __info -----
-  output$genData_info <- renderText({
+  output$genData_info <- renderUI({
     get_clusters_info()
+  })
+
+
+  # ----- __silhouette -----
+  output$genData_silhouette <- renderUI({
+    mySubTitle <- HTML(paste("Silhouette Score", sep = ""))
+
+    silhouette_score <- get_clusters_silhouette()
+
+    if (!is.null(silhouette_score)) silhouette_score <- silhouette_score %>%
+      magrittr::multiply_by(100) %>% round(1) %>% paste("%")
+
+    myValueBox <- valueBox(
+      value = silhouette_score,
+      subtitle = mySubTitle,
+      icon = icon("chart-bar"),
+      color = "red",
+      width = 12
+    )
+    return(myValueBox)
   })
 
   # ----- __plot -----
@@ -550,8 +609,8 @@ function(input, output) {
       kMeans_seed <- input$kMeans_seed
       myIterMax <- input$kMeans_myIterMax
     } else {
-      nbCenters <- get_kMeans_optimalNbCenters()
-      kMeans_seed <- get_kMeans_optimalSeed()
+      nbCenters <- get_kMeans_nbCenters()
+      kMeans_seed <- get_kMeans_seed()
       myIterMax <- 10
     }
 
@@ -602,11 +661,14 @@ function(input, output) {
 
     p <- kmeans_space %>% plot_clusters()
 
+    if (is.null(input$kMeans_finalCenters) |
+        is.null(input$kMeans_initCenters)) return(p)
+
     if (input$kMeans_initCenters) {
       p <- p + ggplot2::geom_point(
         data = init_centers_space,
         mapping = ggplot2::aes(x = x, y = y, fill = as.factor(cluster)),
-        size = 6,
+        size = 5,
         shape = 22
       )
     }
@@ -615,7 +677,7 @@ function(input, output) {
       p <- p + ggplot2::geom_point(
         data = final_centers_space,
         mapping = ggplot2::aes(x = x, y = y, fill = as.factor(cluster)),
-        size = 6,
+        size = 5,
         shape = 21
       )
     }
@@ -654,48 +716,63 @@ function(input, output) {
       return(NULL)
     }
 
-    # Les indicateurs sont calculées
-    #   pour le nombre de clusters attendus variant de 1 à 8
-    #   et pour la graine variant de 1 à 20.
-    indic_df <- plyr::ldply(1:8, function(nbCenters) {
-      if (nbCenters == 1) {
-        data.frame(
-          nbCenters.col = 1,
-          kMeans_seed.col = 0,
-          silhouette_score.col = 0,
-          handled_variation.col = 0
-        )
-      } else {
-        # Pour les graines de 1 à 20,
-        #    on calcule le score de silhouette et la variation considérée.
-        indic_on_several_seeds <- plyr::ldply(1:20, function(kMeans_seed) {
-          set.seed(kMeans_seed)
-          kmeans_result <- clusters_data %>%
-            dplyr::select(x, y) %>%
-            kmeans(centers = nbCenters)
 
-          silhouette_summary <- cluster::silhouette(
-            kmeans_result$cluster,
-            clusters_data %>%
-              dplyr::select(x, y) %>%
-              dist()
-          ) %>% summary()
-          silhouette_mean <- silhouette_summary$si.summary[["Mean"]]
-          handled_variation <- kmeans_result$betweenss %>%
-            magrittr::divide_by(kmeans_result$totss)
-          data.frame(
-            nbCenters.col = nbCenters,
-            kMeans_seed.col = kMeans_seed,
-            silhouette_score.col = silhouette_mean,
-            handled_variation.col = handled_variation
-          )
+    nbSteps <- 8 * 20
+
+    withProgress(
+      message = 'Optimize kMeans.',
+      value = 0,
+      min = 0,
+      max = 1,
+      {
+        # Les indicateurs sont calculées
+        #   pour le nombre de clusters attendus variant de 1 à 8
+        #   et pour la graine variant de 1 à 20.
+        indic_df <- plyr::ldply(1:8, function(nbCenters) {
+          if (nbCenters == 1) {
+            data.frame(
+              nbCenters.col = 1,
+              kMeans_seed.col = 0,
+              silhouette_score.col = 0,
+              handled_variation.col = 0
+            )
+          } else {
+            # Pour les graines de 1 à 20,
+            #    on calcule le score de silhouette et la variation considérée.
+            indic_on_several_seeds <- plyr::ldply(1:20, function(kMeans_seed) {
+              # Increment the progress bar, and update the detail text.
+              incProgress(
+                amount = 1 / nbSteps,
+                detail = paste("Trying", nbCenters, "centers"))
+
+              set.seed(kMeans_seed)
+              kmeans_result <- clusters_data %>%
+                dplyr::select(x, y) %>%
+                kmeans(centers = nbCenters)
+
+              silhouette_summary <- cluster::silhouette(
+                kmeans_result$cluster,
+                clusters_data %>%
+                  dplyr::select(x, y) %>%
+                  dist()
+              ) %>% summary()
+              silhouette_mean <- silhouette_summary$si.summary[["Mean"]]
+              handled_variation <- kmeans_result$betweenss %>%
+                magrittr::divide_by(kmeans_result$totss)
+              data.frame(
+                nbCenters.col = nbCenters,
+                kMeans_seed.col = kMeans_seed,
+                silhouette_score.col = silhouette_mean,
+                handled_variation.col = handled_variation
+              )
+            })
+          }
         })
-      }
-    })
+      })
   })
 
-  # ----- __optimalNbCenters -----
-  get_kMeans_optimalNbCenters <- reactive({
+  # ----- __nbCenters -----
+  get_kMeans_nbCenters <- reactive({
     indic_df <- get_kMeans_indic()
 
     if (is.null(indic_df)) {
@@ -711,8 +788,8 @@ function(input, output) {
   })
 
 
-  # ----- __optimalSeed -----
-  get_kMeans_optimalSeed <- reactive({
+  # ----- __seed -----
+  get_kMeans_seed <- reactive({
     indic_df <- get_kMeans_indic()
 
     if (is.null(indic_df)) {
@@ -798,47 +875,52 @@ function(input, output) {
   # ----- kMeans_output -----
 
   # ----- __info -----
-  output$kMeans_info <- renderText({
+  output$kMeans_info <- renderUI({
     get_clusters_info()
   })
 
-  # ----- __optimalNbCenters -----
-  output$kMeans_optimalNbCenters <- renderUI({
-    optimalNbCenters <- get_kMeans_optimalNbCenters()
-    myTitle <- "Optimal NbCenters"
+  # ----- __nbCenters -----
+  output$kMeans_nbCenters <- renderUI({
+    nbCenters <- get_kMeans_nbCenters()
+    mySubTitle <- "Expected"
+
+    if (nbCenters == 1) myValue <- "1 cluster"
+    else myValue <- paste(nbCenters, "clusters")
 
     valueBox(
-      subtitle = myTitle,
-      value = optimalNbCenters,
-      color = "black",
-      width = 6
+      value = myValue,
+      subtitle = mySubTitle,
+      icon = icon("chart-bar"),
+      color = "red",
+      width = 12
     )
   })
 
-  # ----- __optimalSeed -----
-  output$kMeans_optimalSeed <- renderUI({
-    optimalSeed <- get_kMeans_optimalSeed()
-    myTitle <- "Optimal Seed"
+  # ----- __seed -----
+  output$kMeans_seed <- renderUI({
+    seed <- get_kMeans_seed()
+    mySubTitle <- "Seed"
 
     valueBox(
-      subtitle = myTitle,
-      value = optimalSeed,
-      color = "black",
-      width = 6
+      value = seed,
+      subtitle = mySubTitle,
+      icon = icon("chart-bar"),
+      color = "red",
+      width = 12
     )
   })
 
 
   # ----- __silhouette -----
   output$kMeans_silhouette <- renderUI({
-    myTitle <- HTML(paste("Silhouette", br(), "Score", sep = ""))
+    mySubTitle <- HTML(paste("Silhouette Score", sep = ""))
 
     # On récupère les valeurs en fonction du mode utilisé.
     if (input$kMeans_panel1 == "Auto Run")
     {
       ## Auto Run.
-      nbCenters <- get_kMeans_optimalNbCenters()
-      kMeans_seed <- get_kMeans_optimalSeed()
+      nbCenters <- get_kMeans_nbCenters()
+      kMeans_seed <- get_kMeans_seed()
       myIterMax <- 10
     } else {
       ## Manual Run.
@@ -863,59 +945,14 @@ function(input, output) {
         magrittr::multiply_by(100) %>% round(1) %>% paste("%")
     }
 
-    myInfoBox <- infoBox(
-      title = myTitle,
+    myValueBox <- valueBox(
       value = silhouette_score,
+      subtitle = mySubTitle,
       icon = icon("chart-bar"),
-      color = "navy",
+      color = "red",
       width = 12
     )
-    return(myInfoBox)
-  })
-
-  # ----- __variation -----
-  output$kMeans_variation <- renderUI({
-    myTitle <- HTML(paste("Variation", br(), "Handled", sep = ""))
-
-    # On récupère les valeurs en fonction du mode utilisé.
-    if (input$kMeans_panel1 == "Auto Run")
-    {
-      ## Auto Run.
-      nbCenters <- get_kMeans_optimalNbCenters()
-      kMeans_seed <- get_kMeans_optimalSeed()
-      myIterMax <- 10
-    } else {
-      ## Manual Run.
-      nbCenters <- input$kMeans_nbCenters
-      kMeans_seed <- input$kMeans_seed
-      myIterMax <- input$kMeans_myIterMax
-    }
-    indic_df <- get_kMeans_indic()
-
-    # On gère les cas où les valeurs ne sont pas encore prêtes.
-    if (is.null(nbCenters) | is.null(kMeans_seed) |
-        is.null(myIterMax) | is.null(indic_df)) {
-      handled_variation <- NULL
-    } else if (nbCenters == 1) {
-      handled_variation <- 0 %>% paste("%")
-    } else {
-      handled_variation <- indic_df %>%
-        dplyr::filter(nbCenters.col == nbCenters) %>%
-        dplyr::filter(kMeans_seed.col == kMeans_seed) %>%
-        dplyr::select(handled_variation.col) %>%
-        head(1) %>% unlist() %>% unname() %>%
-        magrittr::multiply_by(100) %>% round(1) %>% paste("%")
-    }
-
-    myInfoBox <- infoBox(
-      title = myTitle,
-      value = handled_variation,
-      icon = icon("chart-bar"),
-      color = "navy",
-      width = 12
-    )
-
-    return(myInfoBox)
+    return(myValueBox)
   })
 
   # ----- __heatMap_sil_A -----
@@ -930,7 +967,12 @@ function(input, output) {
 
   # ----- __plot -----
   output$kMeans_plot <- renderPlot({
-    plot_kMeans() +
+
+    p <- plot_kMeans()
+
+    if (is.null(p)) return(plot.new())
+
+    p +
       ggplot2::coord_fixed() +
       ggplot2::labs(title = "General View")
   })
@@ -995,8 +1037,9 @@ function(input, output) {
       myEps <- 1
       myMinPoints <- 5
     }
+    borderPoints <- input$DBSCAN_borderPoints
 
-    if (is.null(myEps) | is.null(myMinPoints)) {
+    if (is.null(myEps) | is.null(myMinPoints) | is.null(borderPoints)) {
       return(NULL)
     }
 
@@ -1007,10 +1050,21 @@ function(input, output) {
       x = clusters_space,
       eps = myEps,
       minPts = myMinPoints,
-      borderPoints = input$DBSCAN_borderPoints
+      borderPoints = borderPoints
     )
 
     return(DBSCAN_result)
+  })
+
+
+  # ----- __nbClusters -----
+  get_DBSCANnbClusters <- reactive({
+    DBSCAN_result <- run_DBSCAN()
+
+    if (is.null(DBSCAN_result)) return(NULL)
+
+    nc <- DBSCAN_result$cluster %>% unique %>% length %>% magrittr::subtract(1)
+    return(nc)
   })
 
 
@@ -1024,8 +1078,11 @@ function(input, output) {
 
     if (is.null(DBSCAN_result)) return(plot.new())
 
+    # On ne mélange que 8 couleurs.
+    partition <- DBSCAN_result$cluster %% 8
+
     DBSCAN_space <- data.frame(
-      cluster = DBSCAN_result$cluster,
+      cluster = partition,
       x = clusters_data$x,
       y = clusters_data$y
     ) %>%
@@ -1042,13 +1099,35 @@ function(input, output) {
 
 
   # ----- __info -----
-  output$DBSCAN_info <- renderText({
+  output$DBSCAN_info <- renderUI({
     get_clusters_info()
+  })
+
+  # ----- __nbClusters -----
+  output$DBSCAN_nbClusters <- renderUI({
+    mySubTitle <- "Expected"
+
+    nc <- get_DBSCANnbClusters()
+
+    if (!is.null(nc)) {
+      if (nc == 1) nc <- "1 cluster"
+      else nc <- paste(nc, "clusters")
+    }
+
+
+    myValueBox <- valueBox(
+      value = nc,
+      subtitle = mySubTitle,
+      icon = icon("chart-bar"),
+      color = "red",
+      width = 12
+    )
+    return(myValueBox)
   })
 
   # ----- __silhouette -----
   output$DBSCAN_silhouette <- renderUI({
-    myTitle <- HTML(paste("Silhouette", br(), "Score", sep = ""))
+    mySubTitle <- HTML(paste("Silhouette Score", sep = ""))
 
     clusters_data <- get_clusters_data()
     DBSCAN_result <- run_DBSCAN()
@@ -1070,14 +1149,14 @@ function(input, output) {
       }
     }
 
-    myInfoBox <- infoBox(
-      title = myTitle,
+    myValueBox <- valueBox(
       value = silhouette_score,
+      subtitle = mySubTitle,
       icon = icon("chart-bar"),
-      color = "navy",
+      color = "red",
       width = 12
     )
-    return(myInfoBox)
+    return(myValueBox)
   })
 
   # ----- __plot -----
@@ -1090,8 +1169,11 @@ function(input, output) {
 
     if (is.null(DBSCAN_result)) return(plot.new())
 
+    # On ne mélange que 8 couleurs.
+    partition <- DBSCAN_result$cluster %% 8
+
     DBSCAN_space <- data.frame(
-      cluster = DBSCAN_result$cluster,
+      cluster = partition,
       x = clusters_data$x,
       y = clusters_data$y
     ) %>%
@@ -1199,8 +1281,11 @@ function(input, output) {
 
     if (is.null(DBSCAN_result)) return(plot.new())
 
+    # On ne mélange que 8 couleurs.
+    partition <- DBSCAN_result$cluster %% 8
+
     DBSCAN_space <- data.frame(
-      cluster = DBSCAN_result$cluster,
+      cluster = partition,
       x = clusters_data$x,
       y = clusters_data$y
     ) %>%
@@ -1262,52 +1347,72 @@ function(input, output) {
     clusters_space <- clusters_data %>%
       dplyr::select(x, y)
 
-    # Les scores sont calculés pour chaque méthode.
-    all_results <- list(
-      "single",
-      "average",
-      "median",
-      "complete",
-      "centroid",
-      "ward.D2"
-    ) %>%
-      magrittr::set_names(x = ., value = .) %>%
-      plyr::llply(function(myMethod) {
-      results <- NbClust::NbClust(
-        data = clusters_space,
-        min.nc = 2,
-        max.nc = 8,
-        method = myMethod,
-        index = "silhouette"
-      )
-      append(results, c(method = myMethod))
-    })
 
-    All.index <- plyr::ldply(all_results, function(results) {
-      data.frame(
-        nc = names(results$All.index),
-        index = results$All.index
-      )
-    }, .id = "method") %>%
-      dplyr::mutate(nc = nc %>% as.character() %>% as.integer())
+    nbSteps <- 7
 
-    Best.nc <- plyr::ldply(all_results, function(results) {
-      data.frame(
-        nc = names(results$Best.nc),
-        index = results$Best.nc
-      )
-    }, .id = "method")
+    withProgress(
+      message = 'Optimize kMeans.',
+      value = 0,
+      min = 0,
+      max = 1,
+      {
 
 
-    Best.partition <- plyr::llply(all_results, function(results) {
-      results$Best.partition
-    })
+        # Les scores sont calculés pour chaque méthode.
+        all_results <- list(
+          "single",
+          "average",
+          "median",
+          "complete",
+          "centroid",
+          "ward.D2"
+        ) %>%
+          magrittr::set_names(x = ., value = .) %>%
+          plyr::llply(function(myMethod) {
+            incProgress(
+              amount = 1 / nbSteps,
+              detail = paste("Trying", myMethod))
+            results <- NbClust::NbClust(
 
-    all_results <- list(
-      All.index = All.index,
-      Best.nc = Best.nc,
-      Best.partition = Best.partition
-    )
+              data = clusters_space,
+              min.nc = 2,
+              max.nc = 8,
+              method = myMethod,
+              index = "silhouette"
+            )
+            append(results, c(method = myMethod))
+          })
+
+        incProgress(
+          amount = 1 / nbSteps,
+          detail = "Merging results")
+
+        All.index <- plyr::ldply(all_results, function(results) {
+          data.frame(
+            nc = names(results$All.index),
+            index = results$All.index
+          )
+        }, .id = "method") %>%
+          dplyr::mutate(nc = nc %>% as.character() %>% as.integer())
+
+        Best.nc <- plyr::ldply(all_results, function(results) {
+          data.frame(
+            nc = names(results$Best.nc),
+            index = results$Best.nc
+          )
+        }, .id = "method")
+
+
+        Best.partition <- plyr::llply(all_results, function(results) {
+          results$Best.partition
+        })
+
+        all_results <- list(
+          All.index = All.index,
+          Best.nc = Best.nc,
+          Best.partition = Best.partition
+        )
+      })
 
     return(all_results)
   })
@@ -1401,7 +1506,7 @@ function(input, output) {
   })
 
 
-  # ----- __plot_hierarchical_heatmap -----
+  # ----- __plot_heatmap -----
   plot_hierarchical_heatmap <- reactive({
     all_results <- get_hierarchical_results()
 
@@ -1444,7 +1549,7 @@ function(input, output) {
       limits = 2:8,
       expand = c(0,0)
     ) + ggplot2::labs(
-      x = "Hierachical Method",
+      x = "Hierarchical Method",
       y = "Number of Expected Clusters",
       fill = "Silhouette Score"
     ) + ggplot2::theme(
@@ -1506,13 +1611,60 @@ function(input, output) {
 
 
   # ----- __info -----
-  output$hierarchical_info <- renderText({
+  output$hierarchical_info <- renderUI({
     get_clusters_info()
+  })
+
+  # ----- __nbClusters -----
+  output$hierarchical_nbClusters <- renderUI({
+    mySubTitle <- HTML(paste("Expected", sep = ""))
+
+    hierarchical_results <- run_hierarchical()
+
+    if (is.null(hierarchical_results)) {
+      nc <- NULL
+    } else {
+      nc <- hierarchical_results$nc[[1]] %>%
+        paste("clusters")
+
+    }
+
+    myValueBox <- valueBox(
+      subtitle = mySubTitle,
+      value = nc,
+      icon = icon("chart-bar"),
+      color = "red",
+      width = 16
+    )
+    return(myValueBox)
+  })
+
+  # ----- __method -----
+  output$hierarchical_method <- renderUI({
+    mySubTitle <- HTML(paste("Hierarchical Method", sep = ""))
+
+    hierarchical_results <- run_hierarchical()
+
+    if (is.null(hierarchical_results)) {
+      method <- NULL
+    } else {
+      method <- hierarchical_results$method[[1]]
+
+    }
+
+    myValueBox <- valueBox(
+      subtitle = mySubTitle,
+      value = method,
+      icon = icon("chart-bar"),
+      color = "red",
+      width = 12
+    )
+    return(myValueBox)
   })
 
   # ----- __silhouette -----
   output$hierarchical_silhouette <- renderUI({
-    myTitle <- HTML(paste("Silhouette", br(), "Score", sep = ""))
+    mySubTitle <- HTML(paste("Silhouette Score", sep = ""))
 
     hierarchical_results <- run_hierarchical()
 
@@ -1521,17 +1673,16 @@ function(input, output) {
     } else {
       silhouette_score <- hierarchical_results$index[[1]] %>%
         magrittr::multiply_by(100) %>% round(1) %>% paste("%")
-
     }
 
-    myInfoBox <- infoBox(
-      title = myTitle,
+    myValueBox <- valueBox(
+      subtitle = mySubTitle,
       value = silhouette_score,
       icon = icon("chart-bar"),
-      color = "navy",
+      color = "red",
       width = 12
     )
-    return(myInfoBox)
+    return(myValueBox)
   })
 
   # ----- __plot -----
@@ -1562,14 +1713,14 @@ function(input, output) {
 
   # ----- __plot_2 -----
   output$hierarchical_plot_2 <- renderPlot({
-    if (input$hierachical_plotChoice == "init") {
+    if (input$hierarchical_plotChoice == "init") {
       p <- get_clusters_plot() +
         ggplot2::coord_fixed() +
         ggplot2::labs(title = "Initial clusters")
       return(p)
     }
 
-    if (input$hierachical_plotChoice == "zoom") {
+    if (input$hierarchical_plotChoice == "zoom") {
       if (is.null(ranges_hierarchical$x) | is.null(ranges_hierarchical$y)) {
         message <- "Waiting for zoom."
         p <- ggplot2::ggplot(
@@ -1590,12 +1741,244 @@ function(input, output) {
       }
     }
 
-    if (input$hierachical_plotChoice == "heatmap") {
+    if (input$hierarchical_plotChoice == "heatmap") {
       p <- plot_hierarchical_heatmap()
       return(p)
     }
 
       return(plot.new())
+  })
+
+
+
+
+  # ----- modelbased_reac -----
+
+  # ----- __run_modelbased -----
+  run_modelbased <- reactive({
+    clusters_data <- get_clusters_data()
+
+    if (is.null(clusters_data)) {
+      return(NULL)
+    }
+
+    clusters_space <- clusters_data %>%
+      dplyr::select(x, y)
+
+    modelbased_results <- mclust::Mclust(data = clusters_space, verbose = FALSE)
+
+    return(modelbased_results)
+  })
+
+
+
+  # ----- __plot_modelbased -----
+  plot_modelbased <- reactive({
+    clusters_data <- get_clusters_data()
+
+    if (is.null(clusters_data)) return(plot.new())
+
+    modelbased_results <- run_modelbased()
+
+    if (is.null(modelbased_results)) return(plot.new())
+
+    modelbased_space <- data.frame(
+      cluster = modelbased_results$classification,
+      x = clusters_data$x,
+      y = clusters_data$y
+    ) %>%
+      dplyr::arrange(cluster)
+
+    p <- modelbased_space %>% plot_clusters()
+
+    if (!is.null(input$modelbased_centers)) {
+      if (input$modelbased_centers) {
+        centers_space <- modelbased_results$parameters$mean %>%
+          t() %>% as.data.frame() %>% cbind(cluster = 1:nrow(.))
+        p <- p + ggplot2::geom_point(
+          mapping = ggplot2::aes(x = x, y = y, fill = as.factor(cluster)),
+          data = centers_space,
+          size = 5,
+          shape = 22
+        )
+      }
+    }
+
+    if (!is.null(input$modelbased_ellipses)) {
+      if (input$modelbased_ellipses) {
+        centers_space <- modelbased_results$parameters$mean %>%
+          t() %>% as.data.frame() %>% cbind(cluster = 1:nrow(.))
+        ellipse_df <- modelbased_results$parameters$variance$sigma %>%
+          reshape2::melt(
+            varnames = c("Coord", "Coord2", "cluster")) %>%
+          dplyr::select(-Coord2) %>%
+          dplyr::filter(value != 0) %>%
+          reshape2::dcast(cluster ~ Coord) %>%
+          dplyr::mutate(x = sqrt(x), y = sqrt(y)) %>%
+          dplyr::rename(a = x, b = y) %>%
+          dplyr::left_join(
+            centers_space %>%
+              dplyr::rename(x0 = x, y0 = y),
+            by = "cluster")
+
+        p <- p + ggforce::geom_ellipse(
+          mapping = ggplot2::aes(x0 = x0, y0 = y0, a = a, b = b,
+                                 angle = 0,
+                                 fill = as.factor(cluster)),
+          data = ellipse_df,
+          size = 1,
+          alpha = 0.2)
+      }
+    }
+
+
+    if (!is.null(input$modelbased_centers) |
+        !is.null(input$modelbased_ellipses)) {
+      if (input$modelbased_centers |
+          input$modelbased_ellipses) {
+        p <- p + ggplot2::scale_fill_brewer(
+          palette = "Dark2"
+        )
+      }
+    }
+
+    return(p)
+  })
+
+
+  # ----- modelbased_output -----
+
+
+  # ----- __info -----
+  output$modelbased_info <- renderUI({
+    get_clusters_info()
+  })
+
+  # ----- __nbClusters -----
+  output$modelbased_nbClusters <- renderUI({
+    mySubTitle <- HTML(paste("Expected", sep = ""))
+
+    modelbased_results <- run_modelbased()
+
+    if (is.null(modelbased_results)) {
+      nc <- NULL
+    } else {
+      nc <- modelbased_results$G %>%
+        paste("clusters")
+    }
+
+    myValueBox <- valueBox(
+      subtitle = mySubTitle,
+      value = nc,
+      icon = icon("chart-bar"),
+      color = "red",
+      width = 16
+    )
+    return(myValueBox)
+  })
+
+  # ----- __silhouette -----
+  output$modelbased_silhouette <- renderUI({
+    mySubTitle <- "Silhouette Score"
+
+    clusters_data <- get_clusters_data()
+    modelbased_results <- run_modelbased()
+
+    if (is.null(clusters_data) | is.null(modelbased_results)) {
+      silhouette_score <- NULL
+    } else {
+      silhouette_summary <- cluster::silhouette(
+        modelbased_results$classification,
+        clusters_data %>%
+          dplyr::select(x, y) %>%
+          dist()
+      ) %>% summary()
+      silhouette_score <- silhouette_summary$si.summary[["Mean"]] %>%
+        magrittr::multiply_by(100) %>% round(1) %>% paste("%")
+    }
+
+    myValueBox <- valueBox(
+      value = silhouette_score,
+      subtitle = mySubTitle,
+      icon = icon("chart-bar"),
+      color = "red",
+      width = 12
+    )
+    return(myValueBox)
+  })
+
+  # ----- __plot -----
+  output$modelbased_plot <- renderPlot({
+    p <- plot_modelbased()
+
+    if (is.null(p)) return(plot.new())
+
+    p <- p +
+      ggplot2::coord_fixed() +
+      ggplot2::labs(title = "General View")
+
+    return(p)
+  })
+
+  ranges_modelbased <- reactiveValues(x = NULL, y = NULL)
+
+  observe({
+    brush <- input$modelbased_brush
+    if (!is.null(brush)) {
+      ranges_modelbased$x <- c(brush$xmin, brush$xmax)
+      ranges_modelbased$y <- c(brush$ymin, brush$ymax)
+    } else {
+      ranges_modelbased$x <- NULL
+      ranges_modelbased$y <- NULL
+    }
+  })
+
+  # ----- __plot_2 -----
+  output$modelbased_plot_2 <- renderPlot({
+    if (input$modelbased_plotChoice == "init") {
+      p <- get_clusters_plot() +
+        ggplot2::coord_fixed() +
+        ggplot2::labs(title = "Initial clusters")
+      return(p)
+    }
+
+    if (input$modelbased_plotChoice == "zoom") {
+      if (is.null(ranges_modelbased$x) | is.null(ranges_modelbased$y)) {
+        message <- "Waiting for zoom."
+        p <- ggplot2::ggplot(
+        ) + ggplot2::annotate(
+          "text", x = 0, y = 0, size = 8, label = message
+        ) + ggplot2::theme_void()
+        return(p)
+      } else {
+        p <- plot_modelbased(
+        ) + ggplot2::coord_cartesian(
+          xlim = ranges_modelbased$x,
+          ylim = ranges_modelbased$y,
+          expand = FALSE
+        ) + ggplot2::labs(
+          title = "Zoom"
+        )
+        return(p)
+      }
+    }
+
+    if (input$modelbased_plotChoice %in% c("classification",
+                                           "uncertainty",
+                                           "density")) {
+
+      modelbased_results <- run_modelbased()
+
+      if (is.null(modelbased_results)) {
+        return(plot.new())
+      } else {
+        p <- modelbased_results %>%
+          mclust::plot.Mclust(what = input$modelbased_plotChoice)
+
+        return(p)
+      }
+    }
+    return(plot.new())
   })
 
 

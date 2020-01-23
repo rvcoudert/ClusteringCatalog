@@ -20,15 +20,6 @@ page_kMeans <- function()
           # ----- ____Auto Run -----
           tabPanel(
             title = "Auto Run",
-            h4("Selected parameters."),
-            fluidRow(
-              uiOutput(
-                outputId = "kMeans_optimalNbCenters"
-              ),
-              uiOutput(
-                outputId = "kMeans_optimalSeed"
-              )
-            ),
             h4("How many clusters ? Which seed ?"),
             p("In this kMeans version, the algorithm maximize",
               " the silhouette score by selecting the ideal configuration",
@@ -79,18 +70,24 @@ page_kMeans <- function()
       # ----- __main -----
       mainPanel = mainPanel(
         fluidRow(
+          id = "bodyTitle",
           column(
-            width = 8,
-            h3(textOutput(outputId = "kMeans_info"))
+            width = 2,
+            uiOutput(outputId = "kMeans_info",
+                     inline = TRUE)
           ),
           column(
-            width = 4,
+            width = 2,
+            uiOutput(outputId = "kMeans_nbCenters")
+          ),
+          column(
+            width = 2,
             uiOutput(outputId = "kMeans_silhouette")
+          ),
+          column(
+            width = 2,
+            uiOutput(outputId = "kMeans_seed")
           )
-          # column(
-          #   width = 4,
-          #   uiOutput(outputId = "kMeans_variation")
-          # )
         ),
         fluidRow(
           column(
@@ -121,7 +118,7 @@ page_kMeans <- function()
           ),
           column(
             width = 4,
-            class = "myCheckbox square",
+            class = "myCheckbox round",
             checkboxInput(
               inputId = "kMeans_finalCenters",
               label = "Final Centers",
@@ -138,7 +135,7 @@ page_kMeans <- function()
               ),
               column(
                 width = 2,
-                materialSwitch(inputId = "kMeans_init")
+                materialSwitch(inputId = "kMeans_init", value = TRUE)
               ),
               column(
                 width = 8,

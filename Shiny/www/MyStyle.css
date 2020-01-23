@@ -21,7 +21,15 @@ h1 {
 
 /* Décaler en bas le corps de page. */
 .content {
-	margin-top: 50px;
+	margin-top: 0px;
+}
+
+/* Serrer les objets dans le bodyTitle. */
+#bodyTitle > div {
+	padding-top: -10px;
+	padding-bottom: 5px;
+	padding-left: 5px;
+	padding-right: 5px;
 }
 
 
@@ -51,14 +59,48 @@ h1 {
 
 
 /* __ValueBox__*/
-/* Centrer le texte. */
 .small-box {
 	text-align: center;
+	margin: 0px;
+}
+
+.small-box > .inner {
+	padding: 0px;
+}
+
+.small-box h3, .small-box p {
+	display: block;
+	white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.small-box h3 {
+	font-size: 28px;
+	margin: 0px
+}
+
+.small-box p {
+	margin: 0px;
+}
+
+.small-box .icon-large {
+	top: 0px;
+	bottom: auto;
+	left: auto;
+	right: 10px;
+	font-size: 40px;
+}
+
+.bg-red {
+	background-color: #d73925!important;
 }
 
 
 /* __Infobox__*/
 /* Centrer le texte et le nombre. */
+.shiny-bound-output > div {
+	padding: 0px;
+}
 .info-box-text {
 	text-align: center;
 }

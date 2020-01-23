@@ -54,9 +54,18 @@ page_genData <- function()
       ),
       # ----- __main -----
       mainPanel = mainPanel(
-        h3(
-          textOutput(
-            outputId = "genData_info"
+        fluidRow(
+          id = "bodyTitle",
+          column(
+            width = 2,
+            uiOutput(outputId = "genData_info")
+          ),
+          column(
+            width = 2
+          ),
+          column(
+            width = 2,
+            uiOutput(outputId = "genData_silhouette")
           )
         ),
         fluidRow(

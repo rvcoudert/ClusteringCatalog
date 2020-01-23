@@ -48,13 +48,22 @@ page_DBSCAN <- function()
       # ----- __main -----
       mainPanel = mainPanel(
         fluidRow(
+          id = "bodyTitle",
           column(
-            width = 8,
-            h3(textOutput(outputId = "DBSCAN_info"))
+            width = 2,
+            uiOutput(outputId = "DBSCAN_info",
+                     inline = TRUE)
           ),
           column(
-            width = 4,
+            width = 2,
+            uiOutput(outputId = "DBSCAN_nbClusters")
+          ),
+          column(
+            width = 2,
             uiOutput(outputId = "DBSCAN_silhouette")
+          ),
+          column(
+            width = 2
           )
         ),
         fluidRow(
@@ -104,7 +113,7 @@ page_DBSCAN <- function()
               ),
               column(
                 width = 2,
-                materialSwitch(inputId = "DBSCAN_init")
+                materialSwitch(inputId = "DBSCAN_init", value = TRUE)
               ),
               column(
                 width = 8,

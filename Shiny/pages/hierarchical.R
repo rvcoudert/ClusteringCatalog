@@ -63,18 +63,23 @@ page_hierarchical <- function()
       # ----- __main -----
       mainPanel = mainPanel(
         fluidRow(
+          id = "bodyTitle",
           column(
-            width = 8,
-            h3(textOutput(outputId = "hierarchical_info"))
+            width = 2,
+            uiOutput(outputId = "hierarchical_info")
           ),
           column(
-            width = 4,
+            width = 2,
+            uiOutput(outputId = "hierarchical_nbClusters")
+          ),
+          column(
+            width = 2,
             uiOutput(outputId = "hierarchical_silhouette")
+          ),
+          column(
+            width = 2,
+            uiOutput(outputId = "hierarchical_method")
           )
-          # column(
-          #   width = 4,
-          #   uiOutput(outputId = "hierarchical_2_variation")
-          # )
         ),
         fluidRow(
           column(
@@ -115,14 +120,14 @@ page_hierarchical <- function()
           column(
             width = 6,
             radioGroupButtons(
-              inputId = "hierachical_plotChoice",
+              inputId = "hierarchical_plotChoice",
               label = "Plot Choice",
               choices = c(
                 "Initial Clusters" = "init",
-                Zoom = "zoom",
+                "Zoom" = "zoom",
                 "Index Heatmap" = "heatmap"
               ),
-              selected = "zoom",
+              selected = "init",
               checkIcon = list(
                 yes = tags$i(class = "fa fa-check-square",
                              style = "color: #d73925"),
