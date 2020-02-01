@@ -82,7 +82,7 @@ page_modelbased <- function()
             checkboxInput(
               inputId = "modelbased_ellipses",
               label = "Ellipses",
-              value = TRUE)
+              value = FALSE)
           ),
           column(
             width = 6,
