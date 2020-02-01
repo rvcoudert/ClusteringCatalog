@@ -332,13 +332,11 @@ function(input, output) {
       if (is.null(presetChoice)) presetChoice <- "irisPetal"
 
       if (presetChoice == "irisSepal") {
-        data(iris)
         clusters_data <- iris %>%
           dplyr::select(1, 2, 5) %>%
           magrittr::set_colnames(c("x", "y", "cluster")) %>%
           dplyr::mutate(cluster = as.integer(as.factor(cluster)))
       } else if (presetChoice == "irisPetal") {
-        data(iris)
         clusters_data <- iris %>%
           dplyr::select(3, 4, 5) %>%
           magrittr::set_colnames(c("x", "y", "cluster")) %>%
@@ -350,6 +348,29 @@ function(input, output) {
           magrittr::set_colnames(c("x", "y")) %>%
           dplyr::mutate(cluster = 0) %>%
           dplyr::sample_n(4000)
+      } else if (presetChoice == "faithful") {
+        set.seed(0)
+        clusters_data <- faithful %>%
+          scale() %>%
+          as.data.frame() %>%
+          magrittr::set_colnames(c("x", "y")) %>%
+          dplyr::mutate(cluster = 0)
+      } else if (presetChoice == "rock") {
+        set.seed(0)
+        clusters_data <- rock %>%
+          dplyr::select(1, 2) %>%
+          scale() %>%
+          as.data.frame() %>%
+          magrittr::set_colnames(c("x", "y")) %>%
+          dplyr::mutate(cluster = 0)
+      } else if (presetChoice == "rock2") {
+        set.seed(0)
+        clusters_data <- rock %>%
+          dplyr::select(2, 3) %>%
+          scale() %>%
+          as.data.frame() %>%
+          magrittr::set_colnames(c("x", "y")) %>%
+          dplyr::mutate(cluster = 0)
       }
     } else
     {
@@ -521,6 +542,9 @@ function(input, output) {
           choices = c(
             "Iris Sepal" = "irisSepal",
             "Iris Petal" = "irisPetal",
+            "faithful" = "faithful",
+            "rock (area VS peri)" = "rock",
+            "rock (peri VS shape)" = "rock2",
             "DS3" = "DS3"
           ),
           selected = "irisSepal",
