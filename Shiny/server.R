@@ -1,15 +1,24 @@
 # ----- preprocess -----
 
 
+# Starter Data.
+starter.n_samples <- 500
+starter.centers <- 6
+starter.cluster_sd <- 1
+starter.cluster_sd_var <- 0.5
+starter.cluster_min_dist <- 1
+starter.seed <- 2
+
+
 make_blobs <- function(
-  n_samples = 100,
-  centers = 3,
-  cluster_sd = 1,
-  cluster_sd_var = 0,
-  min_dist = 5,
+  n_samples = starter.n_samples,
+  centers = starter.centers,
+  cluster_sd = starter.cluster_sd,
+  cluster_sd_var = starter.cluster_sd_var,
+  min_dist = starter.cluster_min_dist,
   center_limits = c(-20, 20),
   noise = FALSE,
-  seed = 0
+  seed = starter.seed
 ) {
   set.seed(seed)
 
@@ -300,13 +309,6 @@ plot_clusters <- function(clusters_points, xlim = NULL, ylim = NULL) {
 }
 
 
-# clusters_data <- make_blobs(
-#   n_samples = 500,
-#   centers = 6,
-#   cluster_sd_var = 0.5
-# )
-
-
 circleFun <- function(center = c(0,0), r = 1, npoints = 20) {
   tt <- seq(0,2*pi,length.out = npoints)
   xx <- center[1] + r * cos(tt)
@@ -322,73 +324,105 @@ function(input, output) {
   # ----- __clusters_data -----
 
   get_clusters_data <- reactive({
-    if (
-      is.null(input$genData_method) |
-      is.null(input$genData_nSamples) |
-      is.null(input$genData_clusterSd) |
-      is.null(input$genData_clusterSdVar) |
-      is.null(input$genData_blobsNbClusters) |
-      is.null(input$genData_blobsMinDist) |
-      is.null(input$seed)
-    ) {
-      clusters_data <- make_blobs(
-        n_samples = 500,
-        centers = 3,
-        cluster_sd = 1,
-        cluster_sd_var = 0,
-        min_dist = 2,
-        seed = 1)
-    } else {
-      nSamples <- input$genData_nSamples
-      clusterSd <- input$genData_clusterSd
-      clusterSdVar <- input$genData_clusterSdVar
-      # On force les entrées si inadaptées.
-      if (!is.numeric(nSamples)) {
-        nSamples <- 0
-      } else if (nSamples < 8) {
-        nSamples <- 8
+    preset <- input$genData_preset
+    if (is.null(preset)) preset <- FALSE
+
+    if (preset) {
+      presetChoice <- input$genData_presetChoice
+      if (is.null(presetChoice)) presetChoice <- "irisPetal"
+
+      if (presetChoice == "irisSepal") {
+        data(iris)
+        clusters_data <- iris %>%
+          dplyr::select(1, 2, 5) %>%
+          magrittr::set_colnames(c("x", "y", "cluster")) %>%
+          dplyr::mutate(cluster = as.integer(as.factor(cluster)))
+      } else if (presetChoice == "irisPetal") {
+        data(iris)
+        clusters_data <- iris %>%
+          dplyr::select(3, 4, 5) %>%
+          magrittr::set_colnames(c("x", "y", "cluster")) %>%
+          dplyr::mutate(cluster = as.integer(as.factor(cluster)))
+      } else if (presetChoice == "DS3") {
+        data(DS3, package = "dbscan")
+        set.seed(0)
+        clusters_data <- DS3 %>%
+          magrittr::set_colnames(c("x", "y")) %>%
+          dplyr::mutate(cluster = 0) %>%
+          dplyr::sample_n(4000)
       }
-      if (!is.numeric(clusterSd)) {
-        clusterSd <- 1
-      }
-      if (input$genData_method == "blobs") {
-        nb_clusters <- input$genData_blobsNbClusters
-        myMinDist <- input$genData_blobsMinDist
+    } else
+    {
+      if (
+        is.null(input$genData_method) |
+        is.null(input$genData_nSamples) |
+        is.null(input$genData_clusterSd) |
+        is.null(input$genData_clusterSdVar) |
+        is.null(input$genData_blobsNbClusters) |
+        is.null(input$genData_blobsMinDist) |
+        is.null(input$seed)
+      ) {
+        # Starter Data.
         clusters_data <- make_blobs(
-          n_samples = nSamples,
-          centers = nb_clusters,
-          cluster_sd = clusterSd,
-          cluster_sd_var = clusterSdVar,
-          min_dist = myMinDist,
-          seed = input$seed)
-      }
+          n_samples = starter.n_samples,
+          centers = starter.centers,
+          cluster_sd = starter.cluster_sd,
+          cluster_sd_var = starter.cluster_sd_var,
+          min_dist = starter.cluster_min_dist,
+          seed = starter.seed)
+      } else {
+        nSamples <- input$genData_nSamples
+        clusterSd <- input$genData_clusterSd
+        clusterSdVar <- input$genData_clusterSdVar
+        # On force les entrées si inadaptées.
+        if (!is.numeric(nSamples)) {
+          nSamples <- 0
+        } else if (nSamples < 8) {
+          nSamples <- 8
+        }
+        if (!is.numeric(clusterSd)) {
+          clusterSd <- 1
+        }
+        if (input$genData_method == "blobs") {
+          nb_clusters <- input$genData_blobsNbClusters
+          myMinDist <- input$genData_blobsMinDist
+          clusters_data <- make_blobs(
+            n_samples = nSamples,
+            centers = nb_clusters,
+            cluster_sd = clusterSd,
+            cluster_sd_var = clusterSdVar,
+            min_dist = myMinDist,
+            seed = input$seed)
+        }
 
-      if (input$genData_method == "moons") {
-        clusters_data <- make_moons(
-          n_samples = nSamples,
-          cluster_sd = clusterSd,
-          cluster_sd_var = clusterSdVar,
-          seed = input$seed)
-      }
+        if (input$genData_method == "moons") {
+          clusters_data <- make_moons(
+            n_samples = nSamples,
+            cluster_sd = clusterSd,
+            cluster_sd_var = clusterSdVar,
+            seed = input$seed)
+        }
 
-      if (input$genData_method == "circles")
-      {
-        if (is.null(input$genData_circlesScale)) return(NULL)
-        scale <- input$genData_circlesScale
-        clusters_data <- make_circles(
-          n_samples = nSamples,
-          cluster_sd = clusterSd,
-          cluster_sd_var = clusterSdVar,
-          scale = scale,
-          seed = input$seed)
+        if (input$genData_method == "circles")
+        {
+          if (is.null(input$genData_circlesScale)) return(NULL)
+          scale <- input$genData_circlesScale
+          clusters_data <- make_circles(
+            n_samples = nSamples,
+            cluster_sd = clusterSd,
+            cluster_sd_var = clusterSdVar,
+            scale = scale,
+            seed = input$seed)
+        }
       }
     }
-
     return(clusters_data)
   })
-  # ----- sideBar_output -----
 
-  output$blobsNbClusters <- renderUI({
+
+  # ----- header_reac -----
+
+  header_blobsNbClusters <- reactive({
     UI <- NULL
 
     if (input$genData_method == "blobs") {
@@ -396,7 +430,7 @@ function(input, output) {
         inputId = "genData_blobsNbClusters",
         label = "Blobs number",
         choices = 1:8,
-        selected = 3,
+        selected = starter.centers,
         grid = TRUE
       )
     }
@@ -404,7 +438,7 @@ function(input, output) {
     return(UI)
   })
 
-  output$blobsMinDist <- renderUI({
+  header_blobsMinDist <- reactive({
     UI <- NULL
 
     if (input$genData_method == "blobs") {
@@ -412,21 +446,15 @@ function(input, output) {
         inputId = "genData_blobsMinDist",
         label = "Centers Min Dist",
         choices = 1:20,
-        selected = 5,
+        selected = starter.cluster_min_dist,
         grid = TRUE
       )
-      # UI <- sliderTextInput(
-      #   inputId = "genData_distLim",
-      #   label = "Centers Dist Limits",
-      #   choices = 1:20,
-      #   selected = c(5, 8)
-      # )
     }
 
     return(UI)
   })
 
-  output$circlesScale <- renderUI({
+  header_circlesScale <- reactive({
     UI <- NULL
 
     if (input$genData_method == "circles") {
@@ -443,8 +471,141 @@ function(input, output) {
     return(UI)
   })
 
+  header_presetInfo <- reactive({
+    UI <- NULL
+
+    preset <- input$genData_preset
+    if (is.null(preset)) preset <- FALSE
+
+    if (preset) {
+      clusters_data <- get_clusters_data()
+      UI <- fluidPage(
+        p(strong("n_samples :"), nrow(clusters_data)),
+        p(strong("n_clusters :"), length(unique(clusters_data$cluster)))
+      )
+    }
+
+    return(UI)
+  })
+
+
+
+  # ----- header_output -----
+  output$blobsNbClusters <- renderUI({
+    header_blobsNbClusters()
+  })
+
+  output$blobsMinDist <- renderUI({
+    header_blobsMinDist()
+  })
+
+  output$circlesScale <- renderUI({
+    header_circlesScale()
+  })
+
+  output$header_presetInfo <- renderUI({
+    header_presetInfo()
+  })
+
+  output$header_data <- renderUI({
+    preset <- input$genData_preset
+    if (is.null(preset)) preset <- FALSE
+
+    if (preset) {
+      fluidPage(
+        radioGroupButtons(
+          inputId = "genData_presetChoice",
+          label = "Preset Data",
+          direction = "vertical",
+          justified = TRUE,
+          choices = c(
+            "Iris Sepal" = "irisSepal",
+            "Iris Petal" = "irisPetal",
+            "DS3" = "DS3"
+          ),
+          selected = "irisSepal",
+          checkIcon = list(
+            yes = tags$i(class = "fa fa-check-square",
+                         style = "color: #d73925"),
+            no = tags$i(class = "fa fa-square",
+                        style = "color: #d73925")
+          )
+        ),
+        uiOutput(outputId = "header_presetInfo")
+      ) %>% return()
+    } else
+    {
+      fluidPage(
+        radioButtons(
+          inputId = "genData_method",
+          label = "Method",
+          selected = "blobs",
+          choiceNames = c("Blobs", "Moons", "Concentric Circles"),
+          choiceValues = c("blobs", "moons", "circles")
+        ),
+        # radioGroupButtons(
+        #   inputId = "genData_method",
+        #   label = "Method",
+        #   direction = "vertical",
+        #   justified = TRUE,
+        #   choices = c(
+        #     "Blobs" = "blobs",
+        #     "Moons" = "moons",
+        #     "Concentric Circles" = "circles"
+        #   ),
+        #   checkIcon = list(
+        #     yes = tags$i(class = "fa fa-check-square",
+        #                  style = "color: #d73925"),
+        #     no = tags$i(class = "fa fa-square",
+        #                 style = "color: #d73925")
+        #   )
+        # ),
+        numericInput(
+          inputId = "genData_nSamples",
+          label = "Sample Size",
+          min = 0,
+          max = 10000,
+          step = 1,
+          value = starter.n_samples
+        ),
+        numericInput(
+          inputId = "genData_clusterSd",
+          label = "Cluster Dispersion",
+          min = 0,
+          max = 10,
+          step = 0.1,
+          value = starter.cluster_sd
+        ),
+        sliderTextInput(
+          inputId = "genData_clusterSdVar",
+          label = "Dispersion Variation",
+          choices = 0:20 / 10,
+          selected = starter.cluster_sd_var,
+          grid = TRUE
+        ),
+        sliderTextInput(
+          inputId = "seed",
+          label = "Data Seed",
+          choices = 1:20,
+          selected = starter.seed,
+          grid = TRUE
+        ),
+        uiOutput(
+          outputId = "blobsNbClusters"
+        ),
+        uiOutput(
+          outputId = "blobsMinDist"
+        ),
+        uiOutput(
+          outputId = "circlesScale"
+        )
+      ) %>% return()
+    }
+  })
+
 
   # ----- genData_reac -----
+
 
   # ----- __clusters_info -----
 
@@ -456,29 +617,34 @@ function(input, output) {
       color = "red",
       width = 12
     )
+    preset <- input$genData_preset
+    if (is.null(preset)) preset <- FALSE
 
-    method <- input$genData_method
+    if (preset) {
+      myValue <- input$genData_presetChoice
+      mySubtitle <- "Preset Data"
+    } else
+    {
+      method <- input$genData_method
 
-    if (is.null(input$genData_method)) return(nullBox)
+      if (is.null(input$genData_method)) method <- "blobs"
 
-    mySubtitle <- paste("Generated (", input$genData_method, ")", sep = "")
+      if (method %in% c("moons", "circles")) {
+        nc <- 2
+      } else if (method == "blobs") {
+        nc <- input$genData_blobsNbClusters
+        if (is.null(nc)) {
+          nc <- starter.centers
+        }
+      }
 
-    if (input$genData_method %in% c("moons", "circles")) {
-      nc <- 2
-    }
+      if (nc == 1) {
+        myValue <- "1 cluster"
+      } else {
+        myValue <- paste(nc, "clusters")
+      }
 
-    if (input$genData_method == "blobs") {
-      nc <- input$genData_blobsNbClusters
-    }
-
-    if (is.null(nc)) {
-      nc <- 3
-    }
-
-    if (nc == 1) {
-      myValue <- "1 cluster"
-    } else {
-      myValue <- paste(nc, "clusters")
+      mySubtitle <- paste("Generated (", method, ")", sep = "")
     }
 
     myValueBox <- valueBox(
@@ -499,6 +665,8 @@ function(input, output) {
     if (is.null(clusters_data)) {
       return(NULL)
     }
+
+    if ((clusters_data$cluster %>% unique %>% length) == 1) return(0)
 
     silhouette_summary <- cluster::silhouette(
       x = clusters_data$cluster,
@@ -992,96 +1160,106 @@ function(input, output) {
 
   # ----- __plot_2 -----
   output$kMeans_plot_2 <- renderPlot({
-    if (input$kMeans_init == TRUE) {
+    if (input$kMeans_plotChoice == "init") {
       p <- get_clusters_plot() +
         ggplot2::coord_fixed() +
         ggplot2::labs(title = "Initial clusters")
       return(p)
-    }
-
-    if (is.null(ranges_kMeans$x) | is.null(ranges_kMeans$y)) {
-      message <- "Waiting for zoom."
-      p <- ggplot2::ggplot(
-      ) + ggplot2::annotate(
-        "text", x = 0, y = 0, size = 8, label = message
-      ) + ggplot2::theme_void()
+    } else if (input$kMeans_plotChoice == "zoom") {
+      if (is.null(ranges_kMeans$x) | is.null(ranges_kMeans$y)) {
+        message <- "Waiting for zoom."
+        p <- ggplot2::ggplot(
+        ) + ggplot2::annotate(
+          "text", x = 0, y = 0, size = 8, label = message
+        ) + ggplot2::theme_void()
+        return(p)
+      } else {
+        p <- plot_kMeans(
+        ) + ggplot2::coord_cartesian(
+          xlim = ranges_kMeans$x,
+          ylim = ranges_kMeans$y,
+          expand = FALSE
+        ) + ggplot2::labs(
+          title = "Zoom"
+        )
+        return(p)
+      }
+    } else if (input$kMeans_plotChoice == "heatmap") {
+      p <- get_kMeans_heatMap_sil()
       return(p)
-    } else {
-      p <- plot_kMeans(
-      ) + ggplot2::coord_cartesian(
-        xlim = ranges_kMeans$x,
-        ylim = ranges_kMeans$y,
-        expand = FALSE
-      ) + ggplot2::labs(
-        title = "Zoom"
-      )
     }
 
-    return(p)
+    return(plot.new())
   })
 
 
-  # ----- DBSCAN_reac -----
+  # ----- HDBSCAN_reac -----
 
 
-  # ----- __run_DBSCAN -----
-  run_DBSCAN <- reactive({
+  # ----- __run_HDBSCAN -----
+  run_HDBSCAN <- reactive({
     clusters_data <- get_clusters_data()
-
-    if (is.null(clusters_data)) return(NULL)
-
-    if (input$DBSCAN_panel1 == "Manual Run") {
-      myEps <- input$DBSCAN_eps
-      myMinPoints <- input$DBSCAN_minPoints
-    } else {
-      myEps <- 1
-      myMinPoints <- 5
-    }
-    borderPoints <- input$DBSCAN_borderPoints
-
-    if (is.null(myEps) | is.null(myMinPoints) | is.null(borderPoints)) {
-      return(NULL)
-    }
 
     clusters_space <- clusters_data %>%
       dplyr::select(x, y)
 
-    DBSCAN_result <- dbscan::dbscan(
-      x = clusters_space,
-      eps = myEps,
-      minPts = myMinPoints,
-      borderPoints = borderPoints
-    )
+    if (is.null(clusters_data)) return(NULL)
 
-    return(DBSCAN_result)
+    if (input$HDBSCAN_panel1 == "Manual Run" & !is.null(input$HDBSCAN_minPts)) {
+      myMinPts <- input$HDBSCAN_minPts
+    } else {
+      myMinPts <- 20
+    }
+      HDBSCAN_result <- dbscan::hdbscan(
+        x = clusters_space,
+        minPts = myMinPts)
+
+      # On représente les outliers par des <NA> et non des zéros.
+      HDBSCAN_result$cluster[HDBSCAN_result$cluster == 0] <- NA
+
+      # On réassigne le partitionnement dans l'ordre des effectifs.
+      partition <- HDBSCAN_result$cluster
+      new_order <- partition %>% table %>% sort(decreasing = TRUE) %>%
+        names %>% as.character
+      new_order <- 1:length(new_order) %>% set_names(new_order)
+      # Les noms de <new_order> représentent les anciens clusters
+      #   et la liste de <new_order> représente les nouveaux clusters,
+      #   donc on envoie l'ancienne partition dans les noms de <new_order>
+      #   pour récupérer le nouvel ordre dans la liste.
+      HDBSCAN_result$cluster <- new_order[partition %>% as.character]
+
+      names(HDBSCAN_result$cluster_scores) <- new_order[
+        names(HDBSCAN_result$cluster_scores) %>% as.character]
+
+      return(HDBSCAN_result)
   })
 
 
   # ----- __nbClusters -----
-  get_DBSCANnbClusters <- reactive({
-    DBSCAN_result <- run_DBSCAN()
+  get_HDBSCANnbClusters <- reactive({
+    HDBSCAN_result <- run_HDBSCAN()
 
-    if (is.null(DBSCAN_result)) return(NULL)
+    if (is.null(HDBSCAN_result)) return(NULL)
 
-    nc <- DBSCAN_result$cluster %>% unique %>% length %>% magrittr::subtract(1)
+    nc <- HDBSCAN_result$cluster %>% unique %>% length %>% magrittr::subtract(1)
     return(nc)
   })
 
 
-  # ----- __plot_DBSCAN -----
-  plot_DBSCAN <- reactive({
+  # ----- __plot_HDBSCAN -----
+  plot_HDBSCAN <- reactive({
     clusters_data <- get_clusters_data()
 
     if (is.null(clusters_data)) return(plot.new())
 
-    DBSCAN_result <- run_DBSCAN()
+    HDBSCAN_result <- run_HDBSCAN()
 
-    if (is.null(DBSCAN_result)) return(plot.new())
+    if (is.null(HDBSCAN_result)) return(plot.new())
 
     # On ne mélange que 8 couleurs.
-    partition <- DBSCAN_result$cluster %% 8
+    partition <- HDBSCAN_result$cluster %% 8
 
-    DBSCAN_space <- data.frame(
+    HDBSCAN_space <- data.frame(
       cluster = partition,
       x = clusters_data$x,
       y = clusters_data$y
@@ -1089,25 +1267,25 @@ function(input, output) {
       dplyr::arrange(cluster) %>%
       dplyr::mutate(cluster = ifelse(cluster == 0, NA, cluster))
 
-    p <- DBSCAN_space %>% plot_clusters()
+    p <- HDBSCAN_space %>% plot_clusters()
 
     return(p)
   })
 
 
-  # ----- DBSCAN_output -----
+  # ----- HDBSCAN_output -----
 
 
   # ----- __info -----
-  output$DBSCAN_info <- renderUI({
+  output$HDBSCAN_info <- renderUI({
     get_clusters_info()
   })
 
   # ----- __nbClusters -----
-  output$DBSCAN_nbClusters <- renderUI({
-    mySubTitle <- "Expected"
+  output$HDBSCAN_nbClusters <- renderUI({
+    mySubTitle <- "Found"
 
-    nc <- get_DBSCANnbClusters()
+    nc <- get_HDBSCANnbClusters()
 
     if (!is.null(nc)) {
       if (nc == 1) nc <- "1 cluster"
@@ -1126,22 +1304,23 @@ function(input, output) {
   })
 
   # ----- __silhouette -----
-  output$DBSCAN_silhouette <- renderUI({
+  output$HDBSCAN_silhouette <- renderUI({
     mySubTitle <- HTML(paste("Silhouette Score", sep = ""))
 
     clusters_data <- get_clusters_data()
-    DBSCAN_result <- run_DBSCAN()
+    HDBSCAN_result <- run_HDBSCAN()
 
-    if (is.null(DBSCAN_result) | is.null(clusters_data)) {
+    if (is.null(HDBSCAN_result) | is.null(clusters_data)) {
       silhouette_score <- NULL
     } else {
-      if ((DBSCAN_result$cluster %>% unique() %>% length()) == 1) {
+      if ((HDBSCAN_result$cluster %>% unique() %>% length()) == 1) {
         silhouette_score <- NULL
       } else {
         silhouette_summary <- cluster::silhouette(
-          DBSCAN_result$cluster,
+          HDBSCAN_result$cluster[!is.na(HDBSCAN_result$cluster)],
           clusters_data %>%
             dplyr::select(x, y) %>%
+            dplyr::filter(!is.na(HDBSCAN_result$cluster)) %>%
             dist()
         ) %>% summary()
         silhouette_score <- silhouette_summary$si.summary[["Mean"]] %>%
@@ -1160,19 +1339,19 @@ function(input, output) {
   })
 
   # ----- __plot -----
-  output$DBSCAN_plot <- renderPlot({
+  output$HDBSCAN_plot <- renderPlot({
     clusters_data <- get_clusters_data()
 
     if (is.null(clusters_data)) return(plot.new())
 
-    DBSCAN_result <- run_DBSCAN()
+    HDBSCAN_result <- run_HDBSCAN()
 
-    if (is.null(DBSCAN_result)) return(plot.new())
+    if (is.null(HDBSCAN_result)) return(plot.new())
 
     # On ne mélange que 8 couleurs.
-    partition <- DBSCAN_result$cluster %% 8
+    partition <- HDBSCAN_result$cluster %% 8
 
-    DBSCAN_space <- data.frame(
+    HDBSCAN_space <- data.frame(
       cluster = partition,
       x = clusters_data$x,
       y = clusters_data$y
@@ -1180,155 +1359,158 @@ function(input, output) {
       dplyr::arrange(cluster) %>%
       dplyr::mutate(cluster = ifelse(cluster == 0, NA, cluster))
 
-    p <- DBSCAN_space %>% plot_clusters() +
+    p <- HDBSCAN_space %>% plot_clusters() +
       ggplot2::coord_fixed(
-        xlim = c(min(DBSCAN_space$x), max(DBSCAN_space$x)),
-        ylim = c(min(DBSCAN_space$y), max(DBSCAN_space$y))
+        xlim = c(min(HDBSCAN_space$x), max(HDBSCAN_space$x)),
+        ylim = c(min(HDBSCAN_space$y), max(HDBSCAN_space$y))
       ) +
       ggplot2::labs(title = "General View")
 
-    if (input$DBSCAN_density == TRUE) {
-
-      DBSCAN_selected <- DBSCAN_space
-
-      n_captured_points <- nrow(DBSCAN_selected)
-
-      if (n_captured_points > 0) {
-        circle_points <- (2000 / n_captured_points) %>% round() %>%
-          max(10) %>% min(100)
-        circle_base <- circleFun(
-          center = c(0,0),
-          r = DBSCAN_result$eps,
-          npoints = circle_points
-        ) %>% dplyr::slice(rep(1:circle_points, n_captured_points))
-        circle_points <- DBSCAN_selected %>%
-          dplyr::slice(
-            plyr::llply(1:n_captured_points, rep, circle_points) %>% unlist()
-          )
-        circle_points$x <- circle_points$x + circle_base$x
-        circle_points$y <- circle_points$y + circle_base$y
-
-        p <- p + ggplot2::geom_point(
-          mapping = ggplot2::aes(x = x, y = y, color = as.factor(cluster)),
-          data = circle_points,
-          size = 0.1,
-          alpha = 0.5
-        )
-      }
-    }
+    # if (input$HDBSCAN_density == TRUE) {
+    #   HDBSCAN_selected <- HDBSCAN_space
+    #
+    #   n_captured_points <- nrow(HDBSCAN_selected)
+    #
+    #   if (n_captured_points > 0) {
+    #     circle_points <- (2000 / n_captured_points) %>% round() %>%
+    #       max(10) %>% min(100)
+    #     circle_base <- circleFun(
+    #       center = c(0,0),
+    #       r = HDBSCAN_result$eps,
+    #       npoints = circle_points
+    #     ) %>% dplyr::slice(rep(1:circle_points, n_captured_points))
+    #     circle_points <- HDBSCAN_selected %>%
+    #       dplyr::slice(
+    #         plyr::llply(1:n_captured_points, rep, circle_points) %>% unlist()
+    #       )
+    #     circle_points$x <- circle_points$x + circle_base$x
+    #     circle_points$y <- circle_points$y + circle_base$y
+    #
+    #     p <- p + ggplot2::geom_point(
+    #       mapping = ggplot2::aes(x = x, y = y, color = as.factor(cluster)),
+    #       data = circle_points,
+    #       size = 0.1,
+    #       alpha = 0.5
+    #     )
+    #   }
+    # }
 
     return(p)
   })
 
-  ranges_DBSCAN <- reactiveValues(x = NULL, y = NULL)
+  ranges_HDBSCAN <- reactiveValues(x = NULL, y = NULL)
 
   observe({
-    brush <- input$DBSCAN_brush
+    brush <- input$HDBSCAN_brush
     if (!is.null(brush)) {
-      ranges_DBSCAN$x <- c(brush$xmin, brush$xmax)
-      ranges_DBSCAN$y <- c(brush$ymin, brush$ymax)
+      ranges_HDBSCAN$x <- c(brush$xmin, brush$xmax)
+      ranges_HDBSCAN$y <- c(brush$ymin, brush$ymax)
     } else {
-      ranges_DBSCAN$x <- NULL
-      ranges_DBSCAN$y <- NULL
+      ranges_HDBSCAN$x <- NULL
+      ranges_HDBSCAN$y <- NULL
     }
   })
 
-  ranges_2_DBSCAN <- reactiveValues(x = NULL, y = NULL)
+  ranges_2_HDBSCAN <- reactiveValues(x = NULL, y = NULL)
 
   observe({
-    brush <- input$DBSCAN_brush_2
+    brush <- input$HDBSCAN_brush_2
     if (!is.null(brush)) {
-      ranges_2_DBSCAN$x <- c(brush$xmin, brush$xmax)
-      ranges_2_DBSCAN$y <- c(brush$ymin, brush$ymax)
+      ranges_2_HDBSCAN$x <- c(brush$xmin, brush$xmax)
+      ranges_2_HDBSCAN$y <- c(brush$ymin, brush$ymax)
     } else {
-      ranges_2_DBSCAN$x <- NULL
-      ranges_2_DBSCAN$y <- NULL
+      ranges_2_HDBSCAN$x <- NULL
+      ranges_2_HDBSCAN$y <- NULL
     }
   })
 
   # ----- __plot_2 -----
-  output$DBSCAN_plot_2 <- renderPlot({
-    if (input$DBSCAN_init == TRUE) {
+  output$HDBSCAN_plot_2 <- renderPlot({
+    if (input$HDBSCAN_plotChoice == "init") {
       p <- get_clusters_plot() +
         ggplot2::coord_fixed() +
         ggplot2::labs(title = "Initial clusters")
       return(p)
     }
 
-    if (is.null(ranges_DBSCAN$x) | is.null(ranges_DBSCAN$y)) {
-      message <- "Waiting for zoom."
-      p <- ggplot2::ggplot(
-      ) + ggplot2::annotate(
-        "text", x = 0, y = 0, size = 8, label = message
-      ) + ggplot2::theme_void()
-      return(p)
-    } else {
-      p <- plot_DBSCAN(
-      ) + ggplot2::coord_cartesian(
-        xlim = ranges_DBSCAN$x,
-        ylim = ranges_DBSCAN$y,
-        expand = FALSE
-      ) + ggplot2::labs(
-        title = "Zoom"
-      )
-    }
-
-    clusters_data <- get_clusters_data()
-
-    if (is.null(clusters_data)) return(plot.new())
-
-    DBSCAN_result <- run_DBSCAN()
-
-    if (is.null(DBSCAN_result)) return(plot.new())
-
-    # On ne mélange que 8 couleurs.
-    partition <- DBSCAN_result$cluster %% 8
-
-    DBSCAN_space <- data.frame(
-      cluster = partition,
-      x = clusters_data$x,
-      y = clusters_data$y
-    ) %>%
-      dplyr::arrange(cluster) %>%
-      dplyr::mutate(cluster = ifelse(cluster == 0, NA, cluster))
-
-    if (!is.null(ranges_2_DBSCAN$x) & !is.null(ranges_2_DBSCAN$y)) {
-
-      DBSCAN_selected <- DBSCAN_space %>%
-        dplyr::filter(
-          x > ranges_2_DBSCAN$x[[1]] &
-            x < ranges_2_DBSCAN$x[[2]] &
-            y > ranges_2_DBSCAN$y[[1]] &
-            y < ranges_2_DBSCAN$y[[2]]
-        )
-
-      n_captured_points <- nrow(DBSCAN_selected)
-
-      if (n_captured_points > 0) {
-        circle_points <- (3000 / n_captured_points) %>% round() %>%
-          max(10) %>% min(200)
-        circle_base <- circleFun(
-          center = c(0,0),
-          r = DBSCAN_result$eps,
-          npoints = circle_points
-        ) %>% dplyr::slice(rep(1:circle_points, n_captured_points))
-        circle_points <- DBSCAN_selected %>%
-          dplyr::slice(
-            plyr::llply(1:n_captured_points, rep, circle_points) %>% unlist()
-          )
-        circle_points$x <- circle_points$x + circle_base$x
-        circle_points$y <- circle_points$y + circle_base$y
-
-        p <- p + ggplot2::geom_point(
-          mapping = ggplot2::aes(x = x, y = y, color = as.factor(cluster)),
-          data = circle_points,
-          size = 0.1,
-          alpha = 0.5
+    if (input$HDBSCAN_plotChoice == "zoom") {
+      if (is.null(ranges_HDBSCAN$x) | is.null(ranges_HDBSCAN$y)) {
+        message <- "Waiting for zoom."
+        p <- ggplot2::ggplot(
+        ) + ggplot2::annotate(
+          "text", x = 0, y = 0, size = 8, label = message
+        ) + ggplot2::theme_void()
+        return(p)
+      } else {
+        p <- plot_HDBSCAN(
+        ) + ggplot2::coord_cartesian(
+          xlim = ranges_HDBSCAN$x,
+          ylim = ranges_HDBSCAN$y,
+          expand = FALSE
+        ) + ggplot2::labs(
+          title = "Zoom"
         )
       }
+
+      clusters_data <- get_clusters_data()
+
+      if (is.null(clusters_data)) return(plot.new())
+
+      HDBSCAN_result <- run_HDBSCAN()
+
+      if (is.null(HDBSCAN_result)) return(plot.new())
+
+      # On ne mélange que 8 couleurs.
+      partition <- HDBSCAN_result$cluster %% 8
+
+      HDBSCAN_space <- data.frame(
+        cluster = partition,
+        x = clusters_data$x,
+        y = clusters_data$y
+      ) %>%
+        dplyr::arrange(cluster) %>%
+        dplyr::mutate(cluster = ifelse(cluster == 0, NA, cluster))
+
+      if (!is.null(ranges_2_HDBSCAN$x) & !is.null(ranges_2_HDBSCAN$y)) {
+
+        HDBSCAN_selected <- HDBSCAN_space %>%
+          dplyr::filter(
+            x > ranges_2_HDBSCAN$x[[1]] &
+              x < ranges_2_HDBSCAN$x[[2]] &
+              y > ranges_2_HDBSCAN$y[[1]] &
+              y < ranges_2_HDBSCAN$y[[2]]
+          )
+
+        n_captured_points <- nrow(HDBSCAN_selected)
+
+        if (n_captured_points > 0) {
+          circle_points <- (3000 / n_captured_points) %>% round() %>%
+            max(10) %>% min(200)
+          circle_base <- circleFun(
+            center = c(0,0),
+            r = HDBSCAN_result$eps,
+            npoints = circle_points
+          ) %>% dplyr::slice(rep(1:circle_points, n_captured_points))
+          circle_points <- HDBSCAN_selected %>%
+            dplyr::slice(
+              plyr::llply(1:n_captured_points, rep, circle_points) %>% unlist()
+            )
+          circle_points$x <- circle_points$x + circle_base$x
+          circle_points$y <- circle_points$y + circle_base$y
+
+          p <- p + ggplot2::geom_point(
+            mapping = ggplot2::aes(x = x, y = y, color = as.factor(cluster)),
+            data = circle_points,
+            size = 0.1,
+            alpha = 0.5
+          )
+        }
+      }
+
+      return(p)
     }
 
-    return(p)
+    return(plot.new())
   })
 
 
@@ -1617,7 +1799,7 @@ function(input, output) {
 
   # ----- __nbClusters -----
   output$hierarchical_nbClusters <- renderUI({
-    mySubTitle <- HTML(paste("Expected", sep = ""))
+    mySubTitle <- "Found"
 
     hierarchical_results <- run_hierarchical()
 
@@ -1718,9 +1900,7 @@ function(input, output) {
         ggplot2::coord_fixed() +
         ggplot2::labs(title = "Initial clusters")
       return(p)
-    }
-
-    if (input$hierarchical_plotChoice == "zoom") {
+    } else if (input$hierarchical_plotChoice == "zoom") {
       if (is.null(ranges_hierarchical$x) | is.null(ranges_hierarchical$y)) {
         message <- "Waiting for zoom."
         p <- ggplot2::ggplot(
@@ -1746,7 +1926,7 @@ function(input, output) {
       return(p)
     }
 
-      return(plot.new())
+    return(plot.new())
   })
 
 
@@ -1856,7 +2036,7 @@ function(input, output) {
 
   # ----- __nbClusters -----
   output$modelbased_nbClusters <- renderUI({
-    mySubTitle <- HTML(paste("Expected", sep = ""))
+    mySubTitle <- "Found"
 
     modelbased_results <- run_modelbased()
 
@@ -1940,9 +2120,7 @@ function(input, output) {
         ggplot2::coord_fixed() +
         ggplot2::labs(title = "Initial clusters")
       return(p)
-    }
-
-    if (input$modelbased_plotChoice == "zoom") {
+    } else if (input$modelbased_plotChoice == "zoom") {
       if (is.null(ranges_modelbased$x) | is.null(ranges_modelbased$y)) {
         message <- "Waiting for zoom."
         p <- ggplot2::ggplot(

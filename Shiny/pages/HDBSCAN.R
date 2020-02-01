@@ -1,20 +1,21 @@
-page_DBSCAN <- function()
+page_HDBSCAN <- function()
 {
   tabItem(
-    tabName = "DBSCAN",
+    tabName = "HDBSCAN",
     sidebarLayout(
       # ----- __sidebar -----
       sidebarPanel = sidebarPanel(
         titlePanel(
-          h1("DBSCAN")
+          h1("HDBSCAN")
         ),
         tabsetPanel(
-          id = "DBSCAN_panel1",
+          id = "HDBSCAN_panel1",
           # ----- ____Lean -----
           tabPanel(
             title = "Learn",
-            p("Explanations about DBSCAN algorithm."),
-            p("Display DBSCAN steps.")
+            h4("Example of Density model"),
+            p("Assume that the elements of each cluster are",
+              "recognizable as density areas of the space.")
           ),
           # ----- ____Auto Run -----
           tabPanel(
@@ -28,19 +29,13 @@ page_DBSCAN <- function()
           tabPanel(
             title = "Manual Run",
             h4("Manual exploring"),
-            sliderTextInput(
-              inputId = "DBSCAN_eps",
-              label = "Epsilon",
-              choices = 1:50 / 10,
-              selected = 1,
-              grid = TRUE
-            ),
-            sliderTextInput(
-              inputId = "DBSCAN_minPoints",
-              label = "minPoints",
-              choices = 1:20,
-              selected = 5,
-              grid = TRUE
+            numericInput(
+              inputId = "HDBSCAN_minPts",
+              label = "minPts",
+              min = 5,
+              max = 500,
+              step = 5,
+              value = 20
             )
           )
         )
@@ -51,16 +46,16 @@ page_DBSCAN <- function()
           id = "bodyTitle",
           column(
             width = 2,
-            uiOutput(outputId = "DBSCAN_info",
+            uiOutput(outputId = "HDBSCAN_info",
                      inline = TRUE)
           ),
           column(
             width = 2,
-            uiOutput(outputId = "DBSCAN_nbClusters")
+            uiOutput(outputId = "HDBSCAN_nbClusters")
           ),
           column(
             width = 2,
-            uiOutput(outputId = "DBSCAN_silhouette")
+            uiOutput(outputId = "HDBSCAN_silhouette")
           ),
           column(
             width = 2
@@ -71,16 +66,16 @@ page_DBSCAN <- function()
             width = 6,
             plotOutput(
               height = "500px",
-              outputId = "DBSCAN_plot",
-              brush = brushOpts(id = "DBSCAN_brush", resetOnNew = FALSE)
+              outputId = "HDBSCAN_plot",
+              brush = brushOpts(id = "HDBSCAN_brush", resetOnNew = FALSE)
             )
           ),
           column(
             width = 6,
             plotOutput(
               height = "500px",
-              outputId = "DBSCAN_plot_2",
-              brush = brushOpts(id = "DBSCAN_brush_2")
+              outputId = "HDBSCAN_plot_2",
+              brush = brushOpts(id = "HDBSCAN_brush_2")
             )
           )
         ),
@@ -89,7 +84,7 @@ page_DBSCAN <- function()
             width = 2,
             class = "myCheckbox square",
             checkboxInput(
-              inputId = "DBSCAN_borderPoints",
+              inputId = "HDBSCAN_borderPoints",
               label = "Border Points",
               value = FALSE
             )
@@ -98,26 +93,26 @@ page_DBSCAN <- function()
             width = 4,
             class = "myCheckbox square",
             checkboxInput(
-              inputId = "DBSCAN_density",
+              inputId = "HDBSCAN_density",
               label = "Density",
               value = FALSE
             )
           ),
           column(
-            width = 4,
-            class = "myCheckbox square",
-            fluidRow(
-              column(
-                width = 2,
-                p("Zoom")
+            width = 6,
+            radioGroupButtons(
+              inputId = "HDBSCAN_plotChoice",
+              label = "Plot Choice",
+              choices = c(
+                "Initial Clusters" = "init",
+                "Zoom" = "zoom"
               ),
-              column(
-                width = 2,
-                materialSwitch(inputId = "DBSCAN_init", value = TRUE)
-              ),
-              column(
-                width = 8,
-                p("Initial Clusters")
+              selected = "init",
+              checkIcon = list(
+                yes = tags$i(class = "fa fa-check-square",
+                             style = "color: #d73925"),
+                no = tags$i(class = "fa fa-square",
+                            style = "color: #d73925")
               )
             )
           )

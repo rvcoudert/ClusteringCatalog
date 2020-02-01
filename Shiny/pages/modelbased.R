@@ -6,14 +6,17 @@ page_modelbased <- function()
       # ----- __sidebar -----
       sidebarPanel = sidebarPanel(
         titlePanel(
-          h1("modelbased clustering")
+          h1("Model-Based clustering")
         ),
         tabsetPanel(
           id = "modelbased_panel1",
           # ----- ____Lean -----
           tabPanel(
             title = "Learn",
-            p("Explanations about modelbased clustering.")
+            h4("Example of Distribution model"),
+            p("Assume that the elements of each cluster are",
+              "distributed following some known distribution,",
+              "most of the time gaussian.")
           ),
           # ----- ____Auto Run -----
           tabPanel(
@@ -97,7 +100,7 @@ page_modelbased <- function()
               checkIcon = list(
                 yes = tags$i(class = "fa fa-check-square",
                              style = "color: #d73925"),
-                no = tags$i(class = "fa fa-check-square",
+                no = tags$i(class = "fa fa-square",
                             style = "color: #d73925")
               )
             )

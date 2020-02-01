@@ -1,6 +1,5 @@
-# TODO:
-#   - Replacer la HeatMap de kMeans.
-#   - Piper les méthodes de clustering.
+# rock
+# swiss
 
 library(magrittr)
 library(shiny)
@@ -52,6 +51,15 @@ for (script in list.files("pages/")) {
 }
 
 
+# Starter Data.
+starter.n_samples <- 500
+starter.centers <- 6
+starter.cluster_sd <- 1
+starter.cluster_sd_var <- 0.5
+starter.cluster_min_dist <- 1
+starter.seed <- 2
+
+
 # ----- dashboardPage -----
 
 
@@ -73,51 +81,22 @@ dashboardPagePlus(
         size = "sm",
         icon =  icon("sliders"),
         h4("Data Generation"),
-        radioButtons(
-          inputId = "genData_method",
-          label = "Method",
-          selected = "blobs",
-          choiceNames = c("Blobs", "Moons", "Concentric Circles"),
-          choiceValues = c("blobs", "moons", "circles")
-        ),
-        numericInput(
-          inputId = "genData_nSamples",
-          label = "Sample Size",
-          min = 0,
-          max = 10000,
-          value = 500,
-          step = 1
-        ),
-        numericInput(
-          inputId = "genData_clusterSd",
-          label = "Cluster Dispersion",
-          min = 0,
-          max = 10,
-          value = 1,
-          step = 0.1
-        ),
-        sliderTextInput(
-          inputId = "genData_clusterSdVar",
-          label = "Dispersion Variation",
-          choices = 0:20 / 10,
-          selected = 0,
-          grid = TRUE
-        ),
-        sliderTextInput(
-          inputId = "seed",
-          label = "Data Seed",
-          choices = 1:20,
-          selected = 1,
-          grid = TRUE
+        fluidRow(
+          column(
+            width = 2,
+            "Custom"
+          ),
+          column(
+            width = 2,
+            materialSwitch(inputId = "genData_preset")
+          ),
+          column(
+            width = 2,
+            "Preset"
+          )
         ),
         uiOutput(
-          outputId = "blobsNbClusters"
-        ),
-        uiOutput(
-          outputId = "blobsMinDist"
-        ),
-        uiOutput(
-          outputId = "circlesScale"
+          outputId = "header_data"
         )
       )
     )
@@ -143,8 +122,8 @@ dashboardPagePlus(
         icon = icon("spinner")
       ),
       menuItem(
-        text = "DBSCAN",
-        tabName = "DBSCAN",
+        text = "HDBSCAN",
+        tabName = "HDBSCAN",
         icon = icon("spinner")
       ),
       menuItem(
@@ -165,7 +144,7 @@ dashboardPagePlus(
       page_home(),
       page_genData(),
       page_kMeans(),
-      page_DBSCAN(),
+      page_HDBSCAN(),
       page_hierarchical(),
       page_modelbased()
     )

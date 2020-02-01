@@ -13,7 +13,9 @@ page_hierarchical <- function()
           # ----- ____Lean -----
           tabPanel(
             title = "Learn",
-            p("Explanations about hierarchical clustering.")
+            h4("Example of Connectivity model"),
+            p("Assume that the elements of each cluster are",
+              "closer than from the elements of other clusters.")
           ),
           # ----- ____Auto Run -----
           tabPanel(
@@ -131,7 +133,7 @@ page_hierarchical <- function()
               checkIcon = list(
                 yes = tags$i(class = "fa fa-check-square",
                              style = "color: #d73925"),
-                no = tags$i(class = "fa fa-check-square",
+                no = tags$i(class = "fa fa-square",
                            style = "color: #d73925")
               )
             )

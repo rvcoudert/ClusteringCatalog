@@ -13,9 +13,9 @@ page_kMeans <- function()
           # ----- ____Lean -----
           tabPanel(
             title = "Learn",
-            p("Explanations about kMeans algorithm."),
-            p("Explanations about variation handled and silhouette score"),
-            p("Display kMeans steps.")
+            h4("Example of Centroid model"),
+            p("Assume that the elements of each cluster are",
+              "close from its centroid.")
           ),
           # ----- ____Auto Run -----
           tabPanel(
@@ -24,12 +24,7 @@ page_kMeans <- function()
             p("In this kMeans version, the algorithm maximize",
               " the silhouette score by selecting the ideal configuration",
               " with the number of expected clusters between 1 and 8",
-              " and the seed between 1 and 20."),
-            h4("Silhouette score VS nbCenters / kMeans_seed"),
-            plotOutput(
-              outputId = "kMeans_heatMap_sil_A",
-              height = "400px"
-            )
+              " and the seed between 1 and 20.")
           ),
           # ----- ____Manual Run -----
           tabPanel(
@@ -56,13 +51,6 @@ page_kMeans <- function()
               choices = 1:20,
               selected = 10,
               grid = TRUE
-            ),
-            fluidPage(
-              h4("Silhouette score VS nbCenters / kMeans_seed"),
-              plotOutput(
-                outputId = "kMeans_heatMap_sil_M",
-                height = "400px"
-              )
             )
           )
         )
@@ -126,20 +114,21 @@ page_kMeans <- function()
             )
           ),
           column(
-            width = 4,
-            class = "myCheckbox square",
-            fluidRow(
-              column(
-                width = 2,
-                p("Zoom")
+            width = 6,
+            radioGroupButtons(
+              inputId = "kMeans_plotChoice",
+              label = "Plot Choice",
+              choices = c(
+                "Initial Clusters" = "init",
+                "Zoom" = "zoom",
+                "Index Heatmap" = "heatmap"
               ),
-              column(
-                width = 2,
-                materialSwitch(inputId = "kMeans_init", value = TRUE)
-              ),
-              column(
-                width = 8,
-                p("Initial Clusters")
+              selected = "init",
+              checkIcon = list(
+                yes = tags$i(class = "fa fa-check-square",
+                             style = "color: #d73925"),
+                no = tags$i(class = "fa fa-square",
+                            style = "color: #d73925")
               )
             )
           )
