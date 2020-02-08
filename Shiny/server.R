@@ -276,8 +276,8 @@ plot_clusters <- function(clusters_points, xlim = NULL, ylim = NULL) {
     size = 2
   ) + ggplot2::scale_color_brewer(
     palette = "Dark2",
-    guide = FALSE,
-    na.value = "black"
+    na.value = "black",
+    name = "Cluster"
   ) + ggplot2::theme_bw(
     base_size = 14
   ) + ggplot2::theme(
