@@ -264,7 +264,10 @@ make_circles <- function(
 }
 
 
-plot_clusters <- function(clusters_points, xlim = NULL, ylim = NULL) {
+plot_clusters <- function(
+  clusters_points,
+  xlim = NULL,
+  ylim = NULL) {
   p <- ggplot2::ggplot(
     data = clusters_points
   ) + ggplot2::geom_point(

@@ -1,11 +1,12 @@
 # rock
 # swiss
 
-# list of packages required
+# List of required packages.
 list.of.packages <- c(
   "shiny",
   "shinyWidgets",
   "shinydashboard",
+  "shinydashboardPlus",
   "magrittr",
   "ggplot2",
   "dplyr",
@@ -18,18 +19,21 @@ list.of.packages <- c(
   "ggforce",
   "dbscan")
 
-# checking missing packages from list
+# Check missing packages from list.
 new.packages <- list.of.packages[
   !(list.of.packages %in% installed.packages()[
     ,"Package"])]
 
-# install missing ones
+# Install missing ones.
 if (length(new.packages)) install.packages(new.packages, dependencies = TRUE)
 
 library(magrittr)
 library(shiny)
 library(shinyWidgets)
 library(shinydashboard)
+library(shinydashboardPlus)
+# Needed for model-based clustering.
+library(mclust)
 
 # Changer le répertoire de travail sur celui du script en cours.
 # setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
