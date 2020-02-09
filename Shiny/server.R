@@ -350,7 +350,7 @@ function(input, output) {
         clusters_data <- DS3 %>%
           magrittr::set_colnames(c("x", "y")) %>%
           dplyr::mutate(cluster = 0) %>%
-          dplyr::sample_n(4000)
+          dplyr::sample_n(2000)
       } else if (presetChoice == "faithful") {
         set.seed(0)
         clusters_data <- faithful %>%
@@ -2093,6 +2093,8 @@ function(input, output) {
 
     if (is.null(clusters_data) | is.null(modelbased_results)) {
       silhouette_score <- NULL
+    } else if (length(unique(modelbased_results$classification)) <= 1) {
+      silhouette_score <- 0 %>% paste("%")
     } else {
       silhouette_summary <- cluster::silhouette(
         modelbased_results$classification,

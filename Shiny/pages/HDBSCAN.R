@@ -21,9 +21,7 @@ page_HDBSCAN <- function()
           tabPanel(
             title = "Auto Run",
             h4("Default parameters."),
-            p("eps = 1"),
-            p("minPts = 5"),
-            p("How to define density ? How to define minPts ?")
+            p("minPts = 20")
           ),
           # ----- ____Manual Run -----
           tabPanel(
