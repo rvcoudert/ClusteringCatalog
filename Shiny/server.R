@@ -1,18 +1,22 @@
 # ----- preprocess -----
 
 
+library(magrittr)
+
+
 # Starter Data.
 starter.n_samples <- 500
-starter.centers <- 6
+starter.n_centers <- 6
 starter.cluster_sd <- 1
 starter.cluster_sd_var <- 0.5
 starter.cluster_min_dist <- 1
 starter.seed <- 2
 
 
+# Data Generation Methods.
 make_blobs <- function(
   n_samples = starter.n_samples,
-  centers = starter.centers,
+  n_centers = starter.n_centers,
   cluster_sd = starter.cluster_sd,
   cluster_sd_var = starter.cluster_sd_var,
   min_dist = starter.cluster_min_dist,
@@ -22,17 +26,14 @@ make_blobs <- function(
 ) {
   set.seed(seed)
 
-  ## Récupération des entrées.
-  nb_centers <- centers
-
   ## Générations des centres.
   # Initialisation du premier centre.
   keeperX <- c(0)
   keeperY <- c(0)
-  if (centers > 1) {
+  if (n_centers > 1) {
     # Ajout du prochain centre en essayant de le placer au hasard
     #   jusqu'à ce qu'il ne soit pas trop proche d'un autre.
-    for (counter in 2:centers) {
+    for (counter in 2:n_centers) {
       try <- 1
       repeat {
         # On prend un point aléatoire.
@@ -58,16 +59,16 @@ make_blobs <- function(
       }
     }
   }
-  centers_points <- data.frame(x = keeperX, y = keeperY)
+  centers_points <- data.table::data.table(x = keeperX, y = keeperY)
 
   ## Effectifs des clusters.
-  cluster_freq <- rep(n_samples %/% nb_centers, nb_centers)
-  rest <- (n_samples %% nb_centers)
+  cluster_freq <- rep(n_samples %/% n_centers, n_centers)
+  rest <- (n_samples %% n_centers)
   if (rest > 0) {
     cluster_freq[1:rest] <-
       cluster_freq[1:rest] + 1
   }
-  cluster_info <- data.frame(
+  cluster_info <- data.table::data.table(
     cluster = 1:length(cluster_freq),
     freq = cluster_freq
   ) %>% cbind(centers_points)
@@ -75,8 +76,8 @@ make_blobs <- function(
   ## Calcul des points.
   # Initialisation des points sur les centres des clusters.
   cluster_points <- cluster_info %>%
-    dplyr::select(-freq) %>%
-    dplyr::slice(rep(cluster_info$cluster, cluster_info$freq))
+    .[, -"freq"] %>%
+    .[rep(cluster_info$cluster, cluster_info$freq), ]
   # Calcul des perturbations.
   set.seed(seed)
   deviations_x <- apply(cluster_info, 1, function(cluster) {
@@ -96,26 +97,29 @@ make_blobs <- function(
   }) %>% unlist()
   # Ajout des perturbations aux points sur les centres.
   cluster_points <- cluster_points %>%
-    dplyr::mutate(x = x + deviations_x) %>%
-    dplyr::mutate(y = y + deviations_y)
+    .[, x := x + deviations_x] %>%
+    .[, y := y + deviations_y]
+  # Passage du cluster en facteur.
+  cluster_points <- cluster_points %>%
+    .[, cluster := as.factor(cluster)]
 
   return(cluster_points)
 }
 
 
 make_moons <- function(
-  n_samples = 200,
-  cluster_sd = 1,
-  cluster_sd_var = 0,
-  noise = TRUE,
-  seed = 0
+  n_samples = starter.n_samples,
+  cluster_sd = starter.cluster_sd,
+  cluster_sd_var = starter.cluster_sd_var,
+  noise = FALSE,
+  seed = starter.seed
 ) {
   # Récupération des entrées.
-  nb_centers <- 2
+  n_centers <- 2
 
   # Effectifs des lunes.
-  cluster_freq <- rep(n_samples %/% nb_centers, nb_centers)
-  rest <- (n_samples %% nb_centers)
+  cluster_freq <- rep(n_samples %/% n_centers, n_centers)
+  rest <- (n_samples %% n_centers)
   if (rest > 0) {
     cluster_freq[1:rest] <-
       cluster_freq[1:rest] + 1
@@ -128,7 +132,7 @@ make_moons <- function(
     min = 0,
     max = 1
   )
-  points_1 <- data.frame(
+  points_1 <- data.table::data.table(
     cluster = 1,
     x = 10*cospi(points_1),
     y = 10*sinpi(points_1)
@@ -140,7 +144,7 @@ make_moons <- function(
     min = -1,
     max = 0
   )
-  points_2 <- data.frame(
+  points_2 <- data.table::data.table(
     cluster = 2,
     x = 10*cospi(points_2) + 10,
     y = 10*sinpi(points_2)
@@ -176,27 +180,32 @@ make_moons <- function(
       sd = cluster_sd * (1 + cluster_sd_var)
     )
   )
-  # Ajout des perturbations depuis les centres.
+  # Ajout des perturbations aux points sur les centres.
   cluster_points <- cluster_points %>%
-    dplyr::mutate(x = x + deviations_x) %>%
-    dplyr::mutate(y = y + deviations_y)
+    .[, x := x + deviations_x] %>%
+    .[, y := y + deviations_y]
+  # Passage du cluster en facteur.
+  cluster_points <- cluster_points %>%
+    .[, cluster := as.factor(cluster)]
+
+  return(cluster_points)
 }
 
 
 make_circles <- function(
-  n_samples = 200,
-  cluster_sd = 1,
-  cluster_sd_var = 0,
+  n_samples = starter.n_samples,
+  cluster_sd = starter.cluster_sd,
+  cluster_sd_var = starter.cluster_sd_var,
   scale = 0.6,
-  noise = TRUE,
-  seed = 0
+  noise = FALSE,
+  seed = starter.seed
 ) {
   # Récupération des entrées.
-  nb_centers <- 2
+  n_centers <- 2
 
   # Effectifs des cercles.
-  cluster_freq <- rep(n_samples %/% nb_centers, nb_centers)
-  rest <- (n_samples %% nb_centers)
+  cluster_freq <- rep(n_samples %/% n_centers, n_centers)
+  rest <- (n_samples %% n_centers)
   if (rest > 0) {
     cluster_freq[1:rest] <-
       cluster_freq[1:rest] + 1
@@ -209,7 +218,7 @@ make_circles <- function(
     min = 0,
     max = 2
   )
-  points_1 <- data.frame(
+  points_1 <- data.table::data.table(
     cluster = 1,
     x = 20 * cospi(points_1),
     y = 20 * sinpi(points_1)
@@ -221,7 +230,7 @@ make_circles <- function(
     min = 0,
     max = 2
   )
-  points_2 <- data.frame(
+  points_2 <- data.table::data.table(
     cluster = 2,
     x = scale * 20 * cospi(points_2),
     y = scale * 20 * sinpi(points_2)
@@ -257,10 +266,15 @@ make_circles <- function(
       sd = cluster_sd * (1 + cluster_sd_var)
     )
   )
-  # Ajout des perturbations depuis les centres.
+  # Ajout des perturbations aux points sur les centres.
   cluster_points <- cluster_points %>%
-    dplyr::mutate(x = x + deviations_x) %>%
-    dplyr::mutate(y = y + deviations_y)
+    .[, x := x + deviations_x] %>%
+    .[, y := y + deviations_y]
+  # Passage du cluster en facteur.
+  cluster_points <- cluster_points %>%
+    .[, cluster := as.factor(cluster)]
+
+  return(cluster_points)
 }
 
 
@@ -316,7 +330,7 @@ circleFun <- function(center = c(0,0), r = 1, npoints = 20) {
   tt <- seq(0,2*pi,length.out = npoints)
   xx <- center[1] + r * cos(tt)
   yy <- center[2] + r * sin(tt)
-  return(data.frame(x = xx, y = yy))
+  return(data.table::data.table(x = xx, y = yy))
 }
 
 
@@ -336,44 +350,48 @@ function(input, output) {
 
       if (presetChoice == "irisSepal") {
         clusters_data <- iris %>%
-          dplyr::select(1, 2, 5) %>%
+          data.table::as.data.table() %>%
+          .[, c(1, 2, 5)] %>%
           magrittr::set_colnames(c("x", "y", "cluster")) %>%
-          dplyr::mutate(cluster = as.integer(as.factor(cluster)))
+          .[, cluster := cluster ]
       } else if (presetChoice == "irisPetal") {
         clusters_data <- iris %>%
-          dplyr::select(3, 4, 5) %>%
+          data.table::as.data.table() %>%
+          .[, c(3, 4, 5)] %>%
           magrittr::set_colnames(c("x", "y", "cluster")) %>%
-          dplyr::mutate(cluster = as.integer(as.factor(cluster)))
+          .[, cluster := cluster ]
       } else if (presetChoice == "DS3") {
         data(DS3, package = "dbscan")
         set.seed(0)
         clusters_data <- DS3 %>%
           magrittr::set_colnames(c("x", "y")) %>%
-          dplyr::mutate(cluster = 0) %>%
-          dplyr::sample_n(2000)
+          .[, cluster := 0] %>%
+          .[sample(.N, 2000)]
       } else if (presetChoice == "faithful") {
         set.seed(0)
         clusters_data <- faithful %>%
           scale() %>%
-          as.data.frame() %>%
+          data.table::data.table() %>%
           magrittr::set_colnames(c("x", "y")) %>%
-          dplyr::mutate(cluster = 0)
+          .[, cluster := 0]
       } else if (presetChoice == "rock") {
         set.seed(0)
         clusters_data <- rock %>%
-          dplyr::select(1, 2) %>%
+          data.table::data.table() %>%
+          .[, c(1, 2)] %>%
           scale() %>%
-          as.data.frame() %>%
+          data.table::data.table() %>%
           magrittr::set_colnames(c("x", "y")) %>%
-          dplyr::mutate(cluster = 0)
+          .[, cluster := 0]
       } else if (presetChoice == "rock2") {
         set.seed(0)
         clusters_data <- rock %>%
-          dplyr::select(2, 3) %>%
+          data.table::data.table() %>%
+          .[, c(2, 3)] %>%
           scale() %>%
-          as.data.frame() %>%
+          data.table::data.table() %>%
           magrittr::set_colnames(c("x", "y")) %>%
-          dplyr::mutate(cluster = 0)
+          .[, cluster := 0]
       }
     } else
     {
@@ -389,7 +407,7 @@ function(input, output) {
         # Starter Data.
         clusters_data <- make_blobs(
           n_samples = starter.n_samples,
-          centers = starter.centers,
+          n_centers = starter.n_centers,
           cluster_sd = starter.cluster_sd,
           cluster_sd_var = starter.cluster_sd_var,
           min_dist = starter.cluster_min_dist,
@@ -412,7 +430,7 @@ function(input, output) {
           myMinDist <- input$genData_blobsMinDist
           clusters_data <- make_blobs(
             n_samples = nSamples,
-            centers = nb_clusters,
+            n_centers = nb_clusters,
             cluster_sd = clusterSd,
             cluster_sd_var = clusterSdVar,
             min_dist = myMinDist,
@@ -454,7 +472,7 @@ function(input, output) {
         inputId = "genData_blobsNbClusters",
         label = "Blobs number",
         choices = 1:8,
-        selected = starter.centers,
+        selected = starter.n_centers,
         grid = TRUE
       )
     }
@@ -661,7 +679,7 @@ function(input, output) {
       } else if (method == "blobs") {
         nc <- input$genData_blobsNbClusters
         if (is.null(nc)) {
-          nc <- starter.centers
+          nc <- starter.n_centers
         }
       }
 
@@ -685,7 +703,7 @@ function(input, output) {
     return(myValueBox)
   })
 
-  # ----- __silhouette -----
+  # ----- __clusters_silhouette -----
 
   get_clusters_silhouette <- reactive({
     clusters_data <- get_clusters_data()
@@ -696,8 +714,8 @@ function(input, output) {
     if ((clusters_data$cluster %>% unique %>% length) == 1) return(0)
 
     silhouette_summary <- cluster::silhouette(
-      x = clusters_data$cluster,
-      dist = dist(clusters_data %>% dplyr::select(x, y))
+      x = clusters_data$cluster %>% as.integer(),
+      dist = dist(clusters_data %>% .[, .(x, y)])
     ) %>% summary()
     silhouette_mean <- silhouette_summary$si.summary[["Mean"]]
     return(silhouette_mean)
@@ -814,11 +832,11 @@ function(input, output) {
     }
 
     clusters_space <- clusters_data %>%
-      dplyr::select(x, y)
+      .[, .(x, y)]
     set.seed(kMeans_seed)
     init_centers <- clusters_space %>%
-      dplyr::slice(sample(nrow(.), size = nbCenters))
-    init_centers_space <- data.frame(
+      .[sample(.N, nbCenters)]
+    init_centers_space <- data.table::data.table(
       init_centers,
       cluster = 1:nbCenters
     )
@@ -827,16 +845,16 @@ function(input, output) {
       centers = init_centers,
       iter.max = myIterMax
     )
-    final_centers_space <- data.frame(
+    final_centers_space <- data.table::data.table(
       kmeans_result$centers,
       cluster = 1:nbCenters
     )
 
-    kmeans_space <- data.frame(
+    kmeans_space <- data.table::data.table(
       cluster = kmeans_result$cluster,
       x = clusters_data$x,
       y = clusters_data$y
-    ) %>% dplyr::arrange(cluster)
+    ) %>% data.table::setorder(cluster)
 
     attr(kmeans_space, "init_centers_space") <- init_centers_space
     attr(kmeans_space, "final_centers_space") <- final_centers_space
@@ -885,11 +903,12 @@ function(input, output) {
 
     if (input$kMeans_finalCenters & input$kMeans_initCenters) {
       p <- p + ggplot2::geom_segment(
-        data = data.frame(
-          init_centers_space,
-          final_centers_space %>%
-            dplyr::mutate(xend = x, yend = y) %>%
-            dplyr::select(-cluster)
+        data = data.table::data.table(
+          x = init_centers_space$x,
+          y = init_centers_space$y,
+          xend = final_centers_space$x,
+          yend = final_centers_space$y,
+          cluster = final_centers_space$cluster
         ),
         mapping = ggplot2::aes(
           x = x, y = y,
@@ -925,7 +944,7 @@ function(input, output) {
         #   et pour la graine variant de 1 à 20.
         indic_df <- plyr::ldply(1:8, function(nbCenters) {
           if (nbCenters == 1) {
-            data.frame(
+            data.table::data.table(
               nbCenters.col = 1,
               kMeans_seed.col = 0,
               silhouette_score.col = 0,
@@ -942,19 +961,19 @@ function(input, output) {
 
               set.seed(kMeans_seed)
               kmeans_result <- clusters_data %>%
-                dplyr::select(x, y) %>%
+                .[, .(x, y)] %>%
                 kmeans(centers = nbCenters)
 
               silhouette_summary <- cluster::silhouette(
                 kmeans_result$cluster,
                 clusters_data %>%
-                  dplyr::select(x, y) %>%
+                  .[, .(x, y)] %>%
                   dist()
               ) %>% summary()
               silhouette_mean <- silhouette_summary$si.summary[["Mean"]]
               handled_variation <- kmeans_result$betweenss %>%
                 magrittr::divide_by(kmeans_result$totss)
-              data.frame(
+              data.table::data.table(
                 nbCenters.col = nbCenters,
                 kMeans_seed.col = kMeans_seed,
                 silhouette_score.col = silhouette_mean,
@@ -963,6 +982,7 @@ function(input, output) {
             })
           }
         })
+        indic_df <- indic_df %>% data.table::data.table()
       })
   })
 
@@ -977,8 +997,8 @@ function(input, output) {
     # On sélectionne simplement le nombre de clusters issu
     #   la configuration avec le meilleur score de silhouette.
     indic_df %>%
-      dplyr::filter(silhouette_score.col == max(silhouette_score.col)) %>%
-      dplyr::select(nbCenters.col) %>%
+      .[silhouette_score.col == max(silhouette_score.col)] %>%
+      .[, .(nbCenters.col)] %>%
       head(1) %>% unlist() %>% unname()
   })
 
@@ -994,8 +1014,8 @@ function(input, output) {
     # On sélectionne simplement la graine issue
     #   la configuration avec le meilleur score de silhouette.
     indic_df %>%
-      dplyr::filter(silhouette_score.col == max(silhouette_score.col)) %>%
-      dplyr::select(kMeans_seed.col) %>%
+      .[silhouette_score.col == max(silhouette_score.col)] %>%
+      .[, .(kMeans_seed.col)] %>%
       head(1) %>% unlist() %>% unname()
   })
 
@@ -1004,7 +1024,7 @@ function(input, output) {
     tt <- seq(0,2 * pi, length.out = npoints)
     xx <- center[1] + r * cos(tt)
     yy <- center[2] + r * sin(tt)
-    return(data.frame(x = xx, y = yy))
+    return(data.table::data.table(x = xx, y = yy))
   }
 
 
@@ -1017,7 +1037,8 @@ function(input, output) {
     }
 
     # On supprime les lignes où il n'y a qu'un centre. (Inintéressant.)
-    indic_df <- indic_df %>% dplyr::filter(nbCenters.col != 1)
+    indic_df <- indic_df %>%
+      .[nbCenters.col != 1]
 
     myColours <- c(
       "darkred", "red3", "red",
@@ -1133,9 +1154,9 @@ function(input, output) {
       silhouette_score <- 0 %>% paste("%")
     } else {
       silhouette_score <- indic_df %>%
-        dplyr::filter(nbCenters.col == nbCenters) %>%
-        dplyr::filter(kMeans_seed.col == kMeans_seed) %>%
-        dplyr::select(silhouette_score.col) %>%
+        .[nbCenters.col == nbCenters] %>%
+        .[kMeans_seed.col == kMeans_seed] %>%
+        .[, .(silhouette_score.col)] %>%
         head(1) %>% unlist() %>% unname() %>%
         magrittr::multiply_by(100) %>% round(1) %>% paste("%")
     }
@@ -1228,7 +1249,7 @@ function(input, output) {
     clusters_data <- get_clusters_data()
 
     clusters_space <- clusters_data %>%
-      dplyr::select(x, y)
+      .[, .(x, y)]
 
     if (is.null(clusters_data)) return(NULL)
 
@@ -1286,13 +1307,13 @@ function(input, output) {
     # On ne mélange que 8 couleurs.
     partition <- HDBSCAN_result$cluster %% 8
 
-    HDBSCAN_space <- data.frame(
+    HDBSCAN_space <- data.table::data.table(
       cluster = partition,
       x = clusters_data$x,
       y = clusters_data$y
     ) %>%
-      dplyr::arrange(cluster) %>%
-      dplyr::mutate(cluster = ifelse(cluster == 0, NA, cluster))
+      data.table::setorder(cluster) %>%
+      .[, cluster := ifelse(cluster == 0, NA, cluster)]
 
     p <- HDBSCAN_space %>% plot_clusters()
 
@@ -1346,8 +1367,8 @@ function(input, output) {
         silhouette_summary <- cluster::silhouette(
           HDBSCAN_result$cluster[!is.na(HDBSCAN_result$cluster)],
           clusters_data %>%
-            dplyr::select(x, y) %>%
-            dplyr::filter(!is.na(HDBSCAN_result$cluster)) %>%
+            .[, .(x, y)] %>%
+            .[!is.na(HDBSCAN_result$cluster)] %>%
             dist()
         ) %>% summary()
         silhouette_score <- silhouette_summary$si.summary[["Mean"]] %>%
@@ -1378,13 +1399,13 @@ function(input, output) {
     # On ne mélange que 8 couleurs.
     partition <- HDBSCAN_result$cluster %% 8
 
-    HDBSCAN_space <- data.frame(
+    HDBSCAN_space <- data.table::data.table(
       cluster = partition,
       x = clusters_data$x,
       y = clusters_data$y
     ) %>%
-      dplyr::arrange(cluster) %>%
-      dplyr::mutate(cluster = ifelse(cluster == 0, NA, cluster))
+      data.table::setorder(cluster) %>%
+      .[, cluster := ifelse(cluster == 0, NA, cluster)]
 
     p <- HDBSCAN_space %>% plot_clusters() +
       ggplot2::coord_fixed(
@@ -1405,11 +1426,11 @@ function(input, output) {
     #       center = c(0,0),
     #       r = HDBSCAN_result$eps,
     #       npoints = circle_points
-    #     ) %>% dplyr::slice(rep(1:circle_points, n_captured_points))
+    #     ) %>% [rep(1:circle_points, n_captured_points)]
     #     circle_points <- HDBSCAN_selected %>%
-    #       dplyr::slice(
+    #       .[
     #         plyr::llply(1:n_captured_points, rep, circle_points) %>% unlist()
-    #       )
+    #       ]
     #     circle_points$x <- circle_points$x + circle_base$x
     #     circle_points$y <- circle_points$y + circle_base$y
     #
@@ -1490,23 +1511,21 @@ function(input, output) {
       # On ne mélange que 8 couleurs.
       partition <- HDBSCAN_result$cluster %% 8
 
-      HDBSCAN_space <- data.frame(
+      HDBSCAN_space <- data.table::data.table(
         cluster = partition,
         x = clusters_data$x,
         y = clusters_data$y
       ) %>%
-        dplyr::arrange(cluster) %>%
-        dplyr::mutate(cluster = ifelse(cluster == 0, NA, cluster))
+        data.table::setorder(cluster) %>%
+        .[, cluster := ifelse(cluster == 0, NA, cluster)]
 
       if (!is.null(ranges_2_HDBSCAN$x) & !is.null(ranges_2_HDBSCAN$y)) {
 
         HDBSCAN_selected <- HDBSCAN_space %>%
-          dplyr::filter(
-            x > ranges_2_HDBSCAN$x[[1]] &
-              x < ranges_2_HDBSCAN$x[[2]] &
-              y > ranges_2_HDBSCAN$y[[1]] &
-              y < ranges_2_HDBSCAN$y[[2]]
-          )
+          .[x > ranges_2_HDBSCAN$x[[1]]] %>%
+          .[x < ranges_2_HDBSCAN$x[[2]]] %>%
+          .[y > ranges_2_HDBSCAN$y[[1]]] %>%
+          .[y < ranges_2_HDBSCAN$y[[2]]]
 
         n_captured_points <- nrow(HDBSCAN_selected)
 
@@ -1517,11 +1536,11 @@ function(input, output) {
             center = c(0,0),
             r = HDBSCAN_result$eps,
             npoints = circle_points
-          ) %>% dplyr::slice(rep(1:circle_points, n_captured_points))
+          ) %>% .[rep(1:circle_points, n_captured_points)]
           circle_points <- HDBSCAN_selected %>%
-            dplyr::slice(
+            .[
               plyr::llply(1:n_captured_points, rep, circle_points) %>% unlist()
-            )
+            ]
           circle_points$x <- circle_points$x + circle_base$x
           circle_points$y <- circle_points$y + circle_base$y
 
@@ -1554,7 +1573,7 @@ function(input, output) {
     }
 
     clusters_space <- clusters_data %>%
-      dplyr::select(x, y)
+      .[, .(x, y)]
 
 
     nbSteps <- 7
@@ -1581,8 +1600,8 @@ function(input, output) {
             incProgress(
               amount = 1 / nbSteps,
               detail = paste("Trying", myMethod))
-            results <- NbClust::NbClust(
 
+            results <- NbClust::NbClust(
               data = clusters_space,
               min.nc = 2,
               max.nc = 8,
@@ -1597,20 +1616,21 @@ function(input, output) {
           detail = "Merging results")
 
         All.index <- plyr::ldply(all_results, function(results) {
-          data.frame(
+          data.table::data.table(
             nc = names(results$All.index),
             index = results$All.index
           )
         }, .id = "method") %>%
-          dplyr::mutate(nc = nc %>% as.character() %>% as.integer())
+          data.table::data.table() %>%
+          .[, nc := nc %>% as.character() %>% as.integer()]
 
         Best.nc <- plyr::ldply(all_results, function(results) {
-          data.frame(
+          data.table::data.table(
             nc = names(results$Best.nc),
             index = results$Best.nc
           )
-        }, .id = "method")
-
+        }, .id = "method") %>%
+        data.table::data.table()
 
         Best.partition <- plyr::llply(all_results, function(results) {
           results$Best.partition
@@ -1644,8 +1664,8 @@ function(input, output) {
         if (is.null(all_results)) return(NULL)
 
         best_choice <- all_results$All.index %>%
-          dplyr::filter(method == myMethod) %>%
-          dplyr::filter(index == max(index))
+          .[method == myMethod] %>%
+          .[index == max(index)]
 
         myNc <- best_choice$nc[[1]]
         myIndex <- best_choice$index[[1]]
@@ -1673,7 +1693,7 @@ function(input, output) {
         }
 
         clusters_space <- clusters_data %>%
-          dplyr::select(x, y)
+          .[, .(x, y)]
 
         temp_results <- NbClust::NbClust(
           data = clusters_space,
@@ -1696,7 +1716,7 @@ function(input, output) {
       if (is.null(all_results)) return(NULL)
 
       best_choice <- all_results$All.index %>%
-        dplyr::filter(index == max(index))
+        .[index == max(index)]
       myNc <- best_choice$nc[[1]]
       myIndex <- best_choice$index[[1]]
       myMethod <- best_choice$method[[1]]
@@ -1783,12 +1803,12 @@ function(input, output) {
 
     if (is.null(hierarchical_results)) return(plot.new())
 
-    hierarchical_space <- data.frame(
+    hierarchical_space <- data.table::data.table(
       cluster = hierarchical_results$partition,
       x = clusters_data$x,
       y = clusters_data$y
     ) %>%
-      dplyr::arrange(cluster)
+      data.table::setorder(cluster)
 
     p <- hierarchical_space %>% plot_clusters()
 
@@ -1970,7 +1990,7 @@ function(input, output) {
     }
 
     clusters_space <- clusters_data %>%
-      dplyr::select(x, y)
+      .[, .(x, y)]
 
     modelbased_results <- mclust::Mclust(data = clusters_space, verbose = FALSE)
 
@@ -1989,19 +2009,19 @@ function(input, output) {
 
     if (is.null(modelbased_results)) return(plot.new())
 
-    modelbased_space <- data.frame(
+    modelbased_space <- data.table::data.table(
       cluster = modelbased_results$classification,
       x = clusters_data$x,
       y = clusters_data$y
     ) %>%
-      dplyr::arrange(cluster)
+      data.table::setorder(cluster)
 
     p <- modelbased_space %>% plot_clusters()
 
     if (!is.null(input$modelbased_centers)) {
       if (input$modelbased_centers) {
         centers_space <- modelbased_results$parameters$mean %>%
-          t() %>% as.data.frame() %>% cbind(cluster = 1:nrow(.))
+          t() %>% data.table::data.table() %>% cbind(cluster = 1:nrow(.))
         p <- p + ggplot2::geom_point(
           mapping = ggplot2::aes(x = x, y = y, fill = as.factor(cluster)),
           data = centers_space,
@@ -2014,19 +2034,22 @@ function(input, output) {
     if (!is.null(input$modelbased_ellipses)) {
       if (input$modelbased_ellipses) {
         centers_space <- modelbased_results$parameters$mean %>%
-          t() %>% as.data.frame() %>% cbind(cluster = 1:nrow(.))
+          t() %>% data.table::data.table() %>% cbind(cluster = 1:nrow(.))
         ellipse_df <- modelbased_results$parameters$variance$sigma %>%
           reshape2::melt(
             varnames = c("Coord", "Coord2", "cluster")) %>%
-          dplyr::select(-Coord2) %>%
-          dplyr::filter(value != 0) %>%
+          data.table::data.table() %>%
+          .[, Coord2 := NULL] %>%
+          .[value != 0] %>%
           reshape2::dcast(cluster ~ Coord) %>%
-          dplyr::mutate(x = sqrt(x), y = sqrt(y)) %>%
-          dplyr::rename(a = x, b = y) %>%
-          dplyr::left_join(
-            centers_space %>%
-              dplyr::rename(x0 = x, y0 = y),
-            by = "cluster")
+          data.table::data.table() %>%
+          .[, a := sqrt(x)] %>%
+          .[, b := sqrt(y)] %>%
+          .[data.table::data.table(
+            x0 = centers_space$x,
+            y0 = centers_space$y,
+            cluster = centers_space$cluster),
+            on = .(cluster = cluster)]
 
         p <- p + ggforce::geom_ellipse(
           mapping = ggplot2::aes(x0 = x0, y0 = y0, a = a, b = b,
@@ -2099,7 +2122,7 @@ function(input, output) {
       silhouette_summary <- cluster::silhouette(
         modelbased_results$classification,
         clusters_data %>%
-          dplyr::select(x, y) %>%
+          .[, .(x, y)] %>%
           dist()
       ) %>% summary()
       silhouette_score <- silhouette_summary$si.summary[["Mean"]] %>%
