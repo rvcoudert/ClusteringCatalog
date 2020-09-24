@@ -1,6 +1,3 @@
-# rock
-# swiss
-
 # List of required packages.
 list.of.packages <- c(
   "shiny",
